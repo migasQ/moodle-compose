@@ -9,6 +9,8 @@ services:
       - ./www:/var/www/html
       - ${MOODLE_DATA}:/var/www/moodledata
     labels:
+      - traefik.http.middlewares.https-redirect.redirectscheme.scheme=https
+      - traefik.http.middlewares.https-redirect.redirectscheme.permanent=true
       - traefik.enable=true
       - traefik.http.routers.moodle-http.rule=Host(`${MOODLE_URL}`)
       - traefik.http.routers.moodle-http.entrypoints=http
@@ -60,9 +62,6 @@ services:
     ports:
       - 80:80
       - 443:443
-    labels:
-      - traefik.http.middlewares.https-redirect.redirectscheme.scheme=https
-      - traefik.http.middlewares.https-redirect.redirectscheme.permanent=true
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - traefik-public-certificates:/certificates
