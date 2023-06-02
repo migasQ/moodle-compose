@@ -1,0 +1,87 @@
+version: "3"
+
+services:
+  nginx:
+    build: ./nginx
+    container_name: nginx
+    restart: always
+    volumes:
+      - ./www:/var/www/html
+      - ${MOODLE_DATA}:/var/www/moodledata
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.moodle-http.rule=Host(`${MOODLE_URL}`)
+      - traefik.http.routers.moodle-http.entrypoints=http
+      - traefik.http.routers.moodle-http.middlewares=https-redirect
+      - traefik.http.routers.moodle-https.rule=Host(`${MOODLE_URL}`)
+      - traefik.http.routers.moodle-https.entrypoints=https
+      - traefik.http.routers.moodle-https.tls=true
+      - traefik.http.routers.moodle-https.tls.certresolver=le
+      - traefik.http.services.moodle.loadbalancer.server.port=8080
+    logging:
+      driver: local
+      options:
+        max-size: "20m"
+        max-file: "5"
+
+  php-fpm:
+    build: ./php
+    container_name: php-fpm
+    restart: always
+    volumes:
+      - ./www:/var/www/html
+      - ${MOODLE_DATA}:/var/www/moodledata
+    logging:
+      driver: local
+      options:
+        max-size: "20m"
+        max-file: "5"
+
+  db:
+    image: mysql:8.0
+    container_name: db
+    hostname: db
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --skip-character-set-client-handshake
+    environment:
+      - MYSQL_ROOT_PASSWORD
+      - MYSQL_DATABASE
+      - MYSQL_USER
+      - MYSQL_PASSWORD
+    restart: always
+    volumes:
+      - ${MYSQL_DATA}:/var/lib/mysql
+
+  traefik:
+    image: traefik:2.8
+    container_name: traefik
+    ports:
+      - 80:80
+      - 443:443
+    labels:
+      - traefik.http.middlewares.https-redirect.redirectscheme.scheme=https
+      - traefik.http.middlewares.https-redirect.redirectscheme.permanent=true
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik-public-certificates:/certificates
+    command:
+      - --providers.docker
+      - --providers.docker.exposedbydefault=false
+      - --entrypoints.http.address=:80
+      - --entrypoints.https.address=:443
+      - --certificatesresolvers.le.acme.email=$HOSTING_EMAIL
+      - --certificatesresolvers.le.acme.storage=/certificates/acme.json
+      - --certificatesresolvers.le.acme.tlschallenge=true
+      - --log
+      - --log.level=ERROR
+    restart: always
+    logging:
+      driver: local
+      options:
+        max-size: "20m"
+        max-file: "5"
+
+volumes:
+  traefik-public-certificates:
