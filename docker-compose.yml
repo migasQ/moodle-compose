@@ -33,6 +33,9 @@ services:
     volumes:
       - ./www:/var/www/html
       - ${MOODLE_DATA}:/var/www/moodledata
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
     logging:
       driver: local
       options:
