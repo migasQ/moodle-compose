@@ -9,17 +9,16 @@ services:
       - ./www:/var/www/html
       - ${MOODLE_DATA}:/var/www/moodledata
     labels:
-      - traefik.http.middlewares.https-redirect.redirectscheme.scheme=https
-      - traefik.http.middlewares.https-redirect.redirectscheme.permanent=true
       - traefik.enable=true
       - traefik.http.routers.moodle-http.rule=Host(`${MOODLE_URL}`)
       - traefik.http.routers.moodle-http.entrypoints=http
-      - traefik.http.routers.moodle-http.middlewares=https-redirect
+      - traefik.http.routers.moodle-http.middlewares=https-redirect@file, hsts-header@file
       - traefik.http.routers.moodle-https.rule=Host(`${MOODLE_URL}`)
       - traefik.http.routers.moodle-https.entrypoints=https
+      - traefik.http.routers.moodle-https.middlewares=hsts-header@file
       - traefik.http.routers.moodle-https.tls=true
       - traefik.http.routers.moodle-https.tls.certresolver=le
-      - traefik.http.services.moodle.loadbalancer.server.port=8080
+      - traefik.http.services.moodle.loadbalancer.server.port=8080    
     logging:
       driver: local
       options:
@@ -67,6 +66,7 @@ services:
       - 443:443
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik:/configuration
       - traefik-public-certificates:/certificates
     command:
       - --providers.docker
@@ -76,6 +76,8 @@ services:
       - --certificatesresolvers.le.acme.email=$HOSTING_EMAIL
       - --certificatesresolvers.le.acme.storage=/certificates/acme.json
       - --certificatesresolvers.le.acme.tlschallenge=true
+      - --providers.file.directory=/configuration
+      - --providers.file.watch=true      
       - --log
       - --log.level=ERROR
     restart: always
