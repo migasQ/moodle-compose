@@ -258,7 +258,7 @@ class profile_field_base {
      * @param MoodleQuickForm $mform instance of the moodleform class
      */
     public function edit_field_set_default($mform) {
-        if (!empty($this->field->defaultdata)) {
+        if (isset($this->field->defaultdata)) {
             $mform->setDefault($this->inputname, $this->field->defaultdata);
         }
     }
@@ -588,6 +588,16 @@ class profile_field_base {
     }
 
     /**
+     * Whether to display the field and content to the user
+     *
+     * @param context|null $context
+     * @return bool
+     */
+    public function show_field_content(?context $context = null): bool {
+        return $this->is_visible($context) && !$this->is_empty();
+    }
+
+    /**
      * Check if the field should convert the raw data into user-friendly data when exporting
      *
      * @return bool
@@ -741,29 +751,6 @@ function profile_save_data(stdClass $usernew): void {
     $fields = profile_get_user_fields_with_data($usernew->id);
     foreach ($fields as $formfield) {
         $formfield->edit_save_data($usernew);
-    }
-}
-
-/**
- * Display profile fields.
- *
- * @deprecated since Moodle 3.11 MDL-71051 - please do not use this function any more.
- * @todo MDL-71413 This will be deleted in Moodle 4.3.
- *
- * @param int $userid
- */
-function profile_display_fields($userid) {
-    debugging('Function profile_display_fields() is deprecated because it is no longer used and will be '.
-        'removed in future versions of Moodle', DEBUG_DEVELOPER);
-
-    $categories = profile_get_user_fields_with_data_by_category($userid);
-    foreach ($categories as $categoryid => $fields) {
-        foreach ($fields as $formfield) {
-            if ($formfield->is_visible() and !$formfield->is_empty()) {
-                echo html_writer::tag('dt', format_string($formfield->field->name));
-                echo html_writer::tag('dd', $formfield->display_data());
-            }
-        }
     }
 }
 

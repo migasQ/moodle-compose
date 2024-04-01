@@ -61,19 +61,6 @@ abstract class advanced_testcase extends base_testcase {
     }
 
     /**
-     * Hook into the setInIsolation method to define an optional constant.
-     *
-     * @param bool $inisolation
-     */
-    public function setInIsolation(bool $inisolation): void {
-        parent::setInIsolation($inisolation);
-        if ($inisolation) {
-            // Note: This is safe to do because it will only be set once per test run.
-            define('PHPUNIT_ISOLATED_TEST', true);
-        }
-    }
-
-    /**
      * Runs the bare test sequence.
      * @return void
      */
@@ -412,7 +399,8 @@ abstract class advanced_testcase extends base_testcase {
     }
 
     /**
-     * Assert that an event is not using event->contxet.
+     * Assert that various event methods are not using event->context
+     *
      * While restoring context might not be valid and it should not be used by event url
      * or description methods.
      *
@@ -432,7 +420,7 @@ abstract class advanced_testcase extends base_testcase {
         $event->get_url();
         $event->get_description();
 
-        // Restore event->context.
+        // Restore event->context (note that this is unreachable when the event uses context). But ok for correct events.
         phpunit_event_mock::testable_set_event_context($event, $eventcontext);
     }
 
@@ -497,6 +485,26 @@ abstract class advanced_testcase extends base_testcase {
      */
     public function redirectEvents() {
         return phpunit_util::start_event_redirection();
+    }
+
+    /**
+     * Override hook callbacks.
+     *
+     * @param string $hookname
+     * @param callable $callback
+     * @return void
+     */
+    public function redirectHook(string $hookname, callable $callback): void {
+        \core\hook\manager::get_instance()->phpunit_redirect_hook($hookname, $callback);
+    }
+
+    /**
+     * Remove all hook overrides.
+     *
+     * @return void
+     */
+    public function stopHookRedirections(): void {
+        \core\hook\manager::get_instance()->phpunit_stop_redirections();
     }
 
     /**
@@ -718,5 +726,16 @@ abstract class advanced_testcase extends base_testcase {
             unset($task);
         }
         $tasks->close();
+    }
+
+    /**
+     * Run adhoc tasks.
+     */
+    protected function run_all_adhoc_tasks(): void {
+        // Run the adhoc task.
+        while ($task = \core\task\manager::get_next_adhoc_task(time())) {
+            $task->execute();
+            \core\task\manager::adhoc_task_complete($task);
+        }
     }
 }
