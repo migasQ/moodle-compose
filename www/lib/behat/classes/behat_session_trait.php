@@ -528,7 +528,7 @@ trait behat_session_trait {
      * @return boolean
      */
     protected static function running_javascript_in_session(Session $session): bool {
-        return get_class($session->getDriver()) !== 'Behat\Mink\Driver\GoutteDriver';
+        return get_class($session->getDriver()) !== 'Behat\Mink\Driver\BrowserKitDriver';
     }
 
     /**
@@ -724,23 +724,6 @@ trait behat_session_trait {
         $this->ensure_node_is_visible($node);
 
         return $node;
-    }
-
-    /**
-     * Ensures that all the page's editors are loaded.
-     *
-     * @deprecated since Moodle 2.7 MDL-44084 - please do not use this function any more.
-     * @throws ElementNotFoundException
-     * @throws ExpectationException
-     * @return void
-     */
-    protected function ensure_editors_are_loaded() {
-        global $CFG;
-
-        if (empty($CFG->behat_usedeprecated)) {
-            debugging('Function behat_base::ensure_editors_are_loaded() is deprecated. It is no longer required.');
-        }
-        return;
     }
 
     /**

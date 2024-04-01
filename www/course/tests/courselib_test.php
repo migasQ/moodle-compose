@@ -1333,6 +1333,53 @@ class courselib_test extends advanced_testcase {
         }
     }
 
+    /**
+     * Test rebuildcache = false behaviour.
+     *
+     * When we pass rebuildcache = false to set_coursemodule_visible, the corusemodinfo cache will still contain
+     * the original visibility until we trigger a rebuild.
+     *
+     * @return void
+     * @covers ::set_coursemodule_visible
+     */
+    public function test_module_visibility_no_rebuild(): void {
+        $this->setAdminUser();
+        $this->resetAfterTest(true);
+
+        // Create course and modules.
+        $course = $this->getDataGenerator()->create_course(['numsections' => 5]);
+        $forum = $this->getDataGenerator()->create_module('forum', ['course' => $course->id]);
+        $assign = $this->getDataGenerator()->create_module('assign', ['duedate' => time(), 'course' => $course->id]);
+        $modules = compact('forum', 'assign');
+
+        // Hiding the modules.
+        foreach ($modules as $mod) {
+            set_coursemodule_visible($mod->cmid, 0, 1, false);
+            // The modinfo cache still has the original visibility until we manually trigger a rebuild.
+            $cm = get_fast_modinfo($mod->course)->get_cm($mod->cmid);
+            $this->assertEquals(1, $cm->visible);
+        }
+
+        rebuild_course_cache($course->id);
+
+        foreach ($modules as $mod) {
+            $this->check_module_visibility($mod, 0, 0);
+        }
+
+        // Showing the modules.
+        foreach ($modules as $mod) {
+            set_coursemodule_visible($mod->cmid, 1, 1, false);
+            $cm = get_fast_modinfo($mod->course)->get_cm($mod->cmid);
+            $this->assertEquals(0, $cm->visible);
+        }
+
+        rebuild_course_cache($course->id);
+
+        foreach ($modules as $mod) {
+            $this->check_module_visibility($mod, 1, 1);
+        }
+    }
+
     public function test_section_visibility_events() {
         $this->setAdminUser();
         $this->resetAfterTest(true);
@@ -7270,5 +7317,100 @@ class courselib_test extends advanced_testcase {
 
         // The download course content value has changed, it should return true in this case.
         $this->assertTrue(set_downloadcontent($page->cmid, DOWNLOAD_COURSE_CONTENT_ENABLED));
+    }
+
+    /**
+     * Test for course_get_courseimage.
+     *
+     * @covers ::course_get_courseimage
+     */
+    public function test_course_get_courseimage(): void {
+        global $CFG;
+
+        $this->resetAfterTest();
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+
+        $this->assertNull(course_get_courseimage($course));
+
+        $fs = get_file_storage();
+        $file = $fs->create_file_from_pathname((object) [
+            'contextid' => \core\context\course::instance($course->id)->id,
+            'component' => 'course',
+            'filearea' => 'overviewfiles',
+            'itemid' => 0,
+            'filepath' => '/',
+            'filename' => 'logo.png',
+        ], "{$CFG->dirroot}/lib/tests/fixtures/gd-logo.png");
+
+        $image = course_get_courseimage($course);
+        $this->assertInstanceOf(\stored_file::class, $image);
+        $this->assertEquals(
+            $file->get_id(),
+            $image->get_id(),
+        );
+    }
+
+    /**
+     * Test the course_get_communication_instance_data() function.
+     *
+     * @covers ::course_get_communication_instance_data
+     */
+    public function test_course_get_communication_instance_data(): void {
+        $this->resetAfterTest();
+        $course = $this->getDataGenerator()->create_course();
+
+        // Set admin user as a valid enrolment will be checked in the callback function.
+        $this->setAdminUser();
+
+        // Use the callback function and return the data.
+        list($instance, $context, $heading, $returnurl) = component_callback(
+            'core_course',
+            'get_communication_instance_data',
+            [$course->id]
+        );
+
+        // Check the url is as expected.
+        $expectedreturnurl = new moodle_url('/course/view.php', ['id' => $course->id]);
+        $this->assertEquals($expectedreturnurl, $returnurl);
+
+        // Check the context is as expected.
+        $expectedcontext = context_course::instance($course->id);
+        $this->assertEquals($expectedcontext, $context);
+
+        // Check the instance id is as expected.
+        $this->assertEquals($course->id, $instance->id);
+
+        // Check the heading is as expected.
+        $this->assertEquals($course->fullname, $heading);
+    }
+
+    /**
+     * Test the course_update_communication_instance_data() function.
+     *
+     * @covers ::course_update_communication_instance_data
+     */
+    public function test_course_update_communication_instance_data(): void {
+        $this->resetAfterTest();
+        $course = $this->getDataGenerator()->create_course();
+
+        // Set some data to update with.
+        $data = new stdClass();
+        $data->instanceid = $course->id;
+        $data->fullname = 'newname';
+
+        // These should not be the same yet.
+        $this->assertNotEquals($course->fullname, $data->fullname);
+
+        // Use the callback function to update the course with the data.
+        component_callback(
+            'core_course',
+            'update_communication_instance_data',
+            [$data]
+        );
+
+        // Get the course and check it was updated.
+        $course = get_course($course->id);
+        $this->assertEquals($course->fullname, $data->fullname);
     }
 }

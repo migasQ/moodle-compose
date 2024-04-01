@@ -383,7 +383,7 @@ abstract class base {
      * This method ensures that 3rd party course format plugins that still use 'numsections' continue to
      * work but at the same time we no longer expect formats to have 'numsections' property.
      *
-     * @return int
+     * @return int The last section number, or -1 if sections are entirely missing
      */
     public function get_last_section_number() {
         $course = $this->get_course();
@@ -392,6 +392,12 @@ abstract class base {
         }
         $modinfo = get_fast_modinfo($course);
         $sections = $modinfo->get_section_info_all();
+
+        // Sections seem to be missing entirely. Avoid subsequent errors and return early.
+        if (count($sections) === 0) {
+            return -1;
+        }
+
         return (int)max(array_keys($sections));
     }
 
@@ -741,6 +747,37 @@ abstract class base {
     }
 
     /**
+     * Return the old non-ajax activity action url.
+     *
+     * BrowserKit behats tests cannot trigger javascript events,
+     * so we must translate to an old non-ajax url while non-ajax
+     * course editing is still supported.
+     *
+     * @param string $action action name the reactive action
+     * @param cm_info $cm course module
+     * @return moodle_url
+     */
+    public function get_non_ajax_cm_action_url(string $action, cm_info $cm): moodle_url {
+        $nonajaxactions = [
+            'cmDelete' => 'delete',
+            'cmDuplicate' => 'duplicate',
+            'cmHide' => 'hide',
+            'cmShow' => 'show',
+            'cmStealth' => 'stealth',
+        ];
+        if (!isset($nonajaxactions[$action])) {
+            throw new coding_exception('Unknown activity action: ' . $action);
+        }
+        $nonajaxaction = $nonajaxactions[$action];
+        $nonajaxurl = new moodle_url(
+            '/course/mod.php',
+            ['sesskey' => sesskey(), $nonajaxaction => $cm->id]
+        );
+        $nonajaxurl->param('sr', $this->get_section_number());
+        return $nonajaxurl;
+    }
+
+    /**
      * Loads all of the course sections into the navigation
      *
      * This method is called from global_navigation::load_course_sections()
@@ -835,16 +872,15 @@ abstract class base {
      * core_courseformat will be user as the component.
      *
      * @param string $key the string key
-     * @param string|object|array $data extra data that can be used within translation strings
-     * @param string|null $lang moodle translation language, null means use current
+     * @param string|object|array|int $data extra data that can be used within translation strings
      * @return string the get_string result
      */
-    public function get_format_string(string $key, $data = null, $lang = null): string {
+    public function get_format_string(string $key, $data = null): string {
         $component = 'format_' . $this->get_format();
         if (!get_string_manager()->string_exists($key, $component)) {
             $component = 'core_courseformat';
         }
-        return get_string($key, $component, $data, $lang);
+        return get_string($key, $component, $data);
     }
 
     /**
@@ -1432,6 +1468,21 @@ abstract class base {
     }
 
     /**
+     * Check if the group mode can be displayed.
+     * @param cm_info $cm the activity module
+     * @return bool
+     */
+    public function show_groupmode(cm_info $cm): bool {
+        if (!plugin_supports('mod', $cm->modname, FEATURE_GROUPS, false)) {
+            return false;
+        }
+        if (!has_capability('moodle/course:manageactivities', $cm->context)) {
+            return false;
+        }
+        return true;
+    }
+
+    /**
      * Allows to specify for modinfo that section is not available even when it is visible and conditionally available.
      *
      * Note: affected user can be retrieved as: $section->modinfo->userid
@@ -1856,9 +1907,13 @@ abstract class base {
         course_update_section($course, $newsection, $newsection);
 
         $modinfo = $this->get_modinfo();
-        foreach ($modinfo->sections[$originalsection->section] as $modnumber) {
-            $originalcm = $modinfo->cms[$modnumber];
-            duplicate_module($course, $originalcm, $newsection->id, false);
+
+        // Duplicate the section modules, should they exist.
+        if (array_key_exists($originalsection->section, $modinfo->sections)) {
+            foreach ($modinfo->sections[$originalsection->section] as $modnumber) {
+                $originalcm = $modinfo->cms[$modnumber];
+                duplicate_module($course, $originalcm, $newsection->id, false);
+            }
         }
 
         return get_fast_modinfo($course)->get_section_info_by_id($newsection->id);
