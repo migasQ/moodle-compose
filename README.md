@@ -10,5 +10,10 @@
 
 ## Update
 
-- `docker compose build --build-arg UID=$(id -u) --build-arg GID=$(id -g)`
+- `docker compose pull && docker compose build --build-arg UID=$(id -u) --build-arg GID=$(id -g) --no-cache`
 - `docker compose up -d`
+- Activate maintenance mode
+- `git pull` 
+- Set `$CFG->upgradekey = 'put_some_shared_secret_here';`
+- Upgrade/ config everything/ update plugins
+- Deactivate maintenance mode
