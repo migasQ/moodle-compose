@@ -24,9 +24,6 @@
 
 namespace format_tiles\output\courseformat\content\cm;
 
-
-use stdClass;
-
 /**
  * Class to render a course module icon.
  *
@@ -48,10 +45,12 @@ class cmicon extends \core_courseformat\output\local\content\cm\cmicon {
         if ($this->mod->modname == 'url') {
             $externalurl = $DB->get_field('url', 'externalurl', ['id' => $this->mod->instance]);
             if (\format_tiles\output\course_output::is_video_url($externalurl)) {
-                $data['icon'] = $output->image_url('circle-play', 'format_tiles');
+                $data['icon'] = $output->image_url('play', 'format_tiles');
                 $data['pluginname'] = get_string('displaytitle_mod_mp4', 'format_tiles');
                 $data['formattilesclass'] = 'format-tiles-video';
             }
+        } else if ($this->mod->modname == 'bigbluebuttonbn') {
+            $data['iconclass'] .= 'nofilter';
         }
         return $data;
     }
