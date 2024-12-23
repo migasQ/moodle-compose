@@ -20,13 +20,8 @@ namespace core_files\reportbuilder\datasource;
 
 use core\context\{course, coursecat, user};
 use core_reportbuilder_generator;
-use core_reportbuilder_testcase;
-use core_reportbuilder\local\filters\{boolean_select, date, number, select, text};
-
-defined('MOODLE_INTERNAL') || die();
-
-global $CFG;
-require_once("{$CFG->dirroot}/reportbuilder/tests/helpers.php");
+use core_reportbuilder\local\filters\{boolean_select, date, filesize, select, text};
+use core_reportbuilder\tests\core_reportbuilder_testcase;
 
 /**
  * Unit tests for files datasource
@@ -36,7 +31,7 @@ require_once("{$CFG->dirroot}/reportbuilder/tests/helpers.php");
  * @copyright   2022 Paul Holden <paulh@moodle.com>
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class files_test extends core_reportbuilder_testcase {
+final class files_test extends core_reportbuilder_testcase {
 
     /**
      * Test default datasource
@@ -87,8 +82,9 @@ class files_test extends core_reportbuilder_testcase {
      * Test datasource columns that aren't added by default
      */
     public function test_datasource_non_default_columns(): void {
+        global $OUTPUT;
+
         $this->resetAfterTest();
-        $this->setAdminUser();
 
         $category = $this->getDataGenerator()->create_category();
         $categorycontext = coursecat::instance($category->id);
@@ -115,6 +111,7 @@ class files_test extends core_reportbuilder_testcase {
         $generator->create_column(['reportid' => $report->get('id'), 'uniqueidentifier' => 'context:path']);
         $generator->create_column(['reportid' => $report->get('id'), 'uniqueidentifier' => 'context:parent']);
 
+        $generator->create_column(['reportid' => $report->get('id'), 'uniqueidentifier' => 'file:icon']);
         $generator->create_column(['reportid' => $report->get('id'), 'uniqueidentifier' => 'file:path']);
         $generator->create_column(['reportid' => $report->get('id'), 'uniqueidentifier' => 'file:author']);
         $generator->create_column(['reportid' => $report->get('id'), 'uniqueidentifier' => 'file:license']);
@@ -137,6 +134,8 @@ class files_test extends core_reportbuilder_testcase {
                 'Course',
                 $coursecontext->path,
                 $categorycontext->get_context_name(),
+                '<img class="icon iconsize-medium" alt="Directory" title="Directory" src="' .
+                    $OUTPUT->image_url('f/folder')->out() . '" />',
                 '/',
                 null,
                 '',
@@ -151,6 +150,8 @@ class files_test extends core_reportbuilder_testcase {
                 'Course',
                 $coursecontext->path,
                 $categorycontext->get_context_name(),
+                '<img class="icon iconsize-medium" alt="Text file" title="Text file" src="' .
+                    $OUTPUT->image_url('f/text')->out() . '" />',
                 '/',
                 null,
                 '',
@@ -165,6 +166,8 @@ class files_test extends core_reportbuilder_testcase {
                 'User',
                 $usercontext->path,
                 'System',
+                '<img class="icon iconsize-medium" alt="Directory" title="Directory" src="' .
+                    $OUTPUT->image_url('f/folder')->out() . '" />',
                 '/',
                 null,
                 '',
@@ -179,6 +182,8 @@ class files_test extends core_reportbuilder_testcase {
                 'User',
                 $usercontext->path,
                 'System',
+                '<img class="icon iconsize-medium" alt="Text file" title="Text file" src="' .
+                    $OUTPUT->image_url('f/text')->out() . '" />',
                 '/',
                 null,
                 '',
@@ -195,7 +200,7 @@ class files_test extends core_reportbuilder_testcase {
      *
      * @return array[]
      */
-    public function datasource_filters_provider(): array {
+    public static function datasource_filters_provider(): array {
         return [
             // File.
             'Filter directory' => ['file:directory', [
@@ -209,9 +214,24 @@ class files_test extends core_reportbuilder_testcase {
                 'file:name_value' => 'Hello.txt',
             ], 2],
             'Filter size' => ['file:size', [
-                'file:size_operator' => number::GREATER_THAN,
+                'file:size_operator' => filesize::GREATER_THAN,
                 'file:size_value1' => 2,
+                'file:size_unit' => filesize::SIZE_UNIT_BYTE,
             ], 2],
+            'Filter type' => ['file:type', [
+                'file:type_operator' => select::EQUAL_TO,
+                'file:type_value' => 'text/plain',
+            ], 2],
+            'Filter type (non match)' => ['file:type', [
+                'file:type_operator' => select::EQUAL_TO,
+                'file:type_value' => 'image/png',
+            ], 0],
+            'Filter author' => ['file:author', [
+                'file:author_operator' => text::IS_EMPTY,
+            ], 4],
+            'Filter author (non match)' => ['file:author', [
+                'file:author_operator' => text::IS_NOT_EMPTY,
+            ], 0],
             'Filter license' => ['file:license', [
                 'file:license_operator' => select::EQUAL_TO,
                 'file:license_value' => 'unknown',
@@ -227,6 +247,22 @@ class files_test extends core_reportbuilder_testcase {
             'Filter content hash (no match)' => ['file:contenthash', [
                 'file:contenthash_operator' => text::IS_EQUAL_TO,
                 'file:contenthash_value' => 'f00f',
+            ], 0],
+            'Filter component' => ['file:component', [
+                'file:component_operator' => text::IS_EQUAL_TO,
+                'file:component_value' => 'course',
+            ], 2],
+            'Filter component (no match)' => ['file:component', [
+                'file:component_operator' => text::IS_EQUAL_TO,
+                'file:component_value' => 'reportbuilder',
+            ], 0],
+            'Filter area' => ['file:area', [
+                'file:area_operator' => text::IS_EQUAL_TO,
+                'file:area_value' => 'summary',
+            ], 2],
+            'Filter area (no match)' => ['file:area', [
+                'file:area_operator' => text::IS_EQUAL_TO,
+                'file:area_value' => 'report',
             ], 0],
             'Filter time created' => ['file:timecreated', [
                 'file:timecreated_operator' => date::DATE_RANGE,

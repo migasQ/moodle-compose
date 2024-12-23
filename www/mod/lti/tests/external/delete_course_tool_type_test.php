@@ -32,13 +32,13 @@ require_once($CFG->dirroot . '/mod/lti/tests/mod_lti_testcase.php');
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @coversDefaultClass \mod_lti\external\delete_course_tool_type
  */
-class delete_course_tool_type_test extends \mod_lti_testcase {
+final class delete_course_tool_type_test extends \mod_lti_testcase {
 
     /**
      * Test delete_course_tool() for a course tool.
      * @covers ::execute
      */
-    public function test_delete_course_tool() {
+    public function test_delete_course_tool(): void {
         $this->resetAfterTest();
 
         $course = $this->getDataGenerator()->create_course();
@@ -67,7 +67,7 @@ class delete_course_tool_type_test extends \mod_lti_testcase {
      * Test delete_course_tool() for a site tool, which is forbidden.
      * @covers ::execute
      */
-    public function test_delete_course_tool_site_tool() {
+    public function test_delete_course_tool_site_tool(): void {
         $this->resetAfterTest();
 
         $course = $this->getDataGenerator()->create_course();

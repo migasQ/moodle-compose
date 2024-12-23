@@ -26,12 +26,13 @@ use ReflectionMethod;
  * @copyright   2021 onwards Peter Dias
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class primary_test extends \advanced_testcase {
+final class primary_test extends \advanced_testcase {
     /**
      * Basic setup to make sure the nav objects gets generated without any issues.
      */
     public function setUp(): void {
         global $PAGE;
+        parent::setUp();
         $this->resetAfterTest();
         $pagecourse = $this->getDataGenerator()->create_course();
         $assign = $this->getDataGenerator()->create_module('assign', ['course' => $pagecourse->id]);
@@ -54,7 +55,7 @@ class primary_test extends \advanced_testcase {
      *                             otherwise consider the user as non-logged in
      * @param array $expecteditems An array of nodes expected with content in them.
      */
-    public function test_primary_export(bool $withcustom, bool $withlang, string $userloggedin, array $expecteditems) {
+    public function test_primary_export(bool $withcustom, bool $withlang, string $userloggedin, array $expecteditems): void {
         global $PAGE, $CFG;
         if ($withcustom) {
             $CFG->custommenuitems = "Course search|/course/search.php
@@ -113,7 +114,7 @@ class primary_test extends \advanced_testcase {
      *
      * @return array
      */
-    public function primary_export_provider(): array {
+    public static function primary_export_provider(): array {
         return [
             "Export the menu data when: custom menu exists; multiple langs installed; user is not logged in." => [
                 true, true, '', ['mobileprimarynav', 'moremenu', 'lang', 'user']
@@ -152,7 +153,7 @@ class primary_test extends \advanced_testcase {
      * @param string $config
      * @param array $expected
      */
-    public function test_get_custom_menu(string $config, array $expected) {
+    public function test_get_custom_menu(string $config, array $expected): void {
         $actual = $this->get_custom_menu($config);
         $this->assertEquals($expected, $actual);
     }
@@ -168,7 +169,6 @@ class primary_test extends \advanced_testcase {
         $CFG->custommenuitems = $config;
         $output = new primary($PAGE);
         $method = new ReflectionMethod('core\navigation\output\primary', 'get_custom_menu');
-        $method->setAccessible(true);
         $renderer = $PAGE->get_renderer('core');
 
         // We can't assert the value of each menuitem "moremenuid" property (because it's random).
@@ -190,7 +190,7 @@ class primary_test extends \advanced_testcase {
      *
      * @return array
      */
-    public function custom_menu_provider(): array {
+    public static function custom_menu_provider(): array {
         return [
             'Simple custom menu' => [
                 "Course search|/course/search.php
@@ -322,7 +322,7 @@ class primary_test extends \advanced_testcase {
      * @throws \ReflectionException
      * @throws \moodle_exception
      */
-    public function test_merge_primary_and_custom() {
+    public function test_merge_primary_and_custom(): void {
         global $PAGE;
 
         $menu = $this->merge_and_render_menus();
@@ -375,7 +375,6 @@ class primary_test extends \advanced_testcase {
         $primary = new primary($PAGE);
 
         $method = new ReflectionMethod('core\navigation\output\primary', 'get_primary_nav');
-        $method->setAccessible(true);
         $dataprimary = $method->invoke($primary);
 
         // Take this custom menu that would come from the  setting custommenitems.
@@ -395,7 +394,6 @@ class primary_test extends \advanced_testcase {
 
         $datacustom = $this->get_custom_menu($custommenuitems);
         $method = new ReflectionMethod('core\navigation\output\primary', 'merge_primary_and_custom');
-        $method->setAccessible(true);
         $menucomplete = $method->invoke($primary, $dataprimary, $datacustom, $ismobile);
         return $menucomplete;
     }

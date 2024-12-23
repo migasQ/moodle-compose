@@ -345,10 +345,11 @@ class HandlerManager {
         let hasDefault = false;
         fileHandlers.forEach((handler, index) => {
             const isDefault = (defaultModule == handler.module);
+            const optionNumber = index + 1;
             data.handlers.push({
                 ...handler,
                 selected: isDefault,
-                labelid: `fileuploader_${data.uploadid}`,
+                labelid: `fileuploader_${data.uploadid}_${optionNumber}`,
                 value: index,
             });
             hasDefault = hasDefault || isDefault;
@@ -492,7 +493,7 @@ async function loadErrorStrings(courseId) {
         {key: 'dndupload', component: 'core_error'},
         {key: 'dndunkownfile', component: 'core_error'},
     ];
-    window.console.log(allStrings);
+
     const loadedStrings = await getStrings(allStrings);
     allStrings.forEach(({key}, index) => {
         errors[key] = loadedStrings[index];

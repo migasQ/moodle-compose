@@ -32,7 +32,7 @@ require_once(__DIR__ . '/fixtures/testable_assign.php');
  * @copyright  1999 onwards Martin Dougiamas  {@link http://moodle.com}
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class base_test extends \advanced_testcase {
+final class base_test extends \advanced_testcase {
 
     /** @var Default number of students to create */
     const DEFAULT_STUDENT_COUNT = 3;
@@ -83,6 +83,7 @@ class base_test extends \advanced_testcase {
      */
     protected function setUp(): void {
         global $DB;
+        parent::setUp();
 
         $this->resetAfterTest(true);
 
@@ -210,7 +211,7 @@ class base_test extends \advanced_testcase {
         return new mod_assign_testable_assign($context, $cm, $this->course);
     }
 
-    public function test_create_instance() {
+    public function test_create_instance(): void {
         $this->assertNotEmpty($this->create_instance());
     }
 

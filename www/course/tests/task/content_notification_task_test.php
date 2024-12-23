@@ -29,7 +29,7 @@ use core_availability\tree;
  * @copyright  2021 Juan Leyva <juan@moodle.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class content_notification_task_test extends \advanced_testcase {
+final class content_notification_task_test extends \advanced_testcase {
 
     /**
      * Test execution of task
@@ -120,8 +120,8 @@ class content_notification_task_test extends \advanced_testcase {
 
             $messagecustomdata = json_decode($message->customdata);
             $this->assertEquals($course->id, $messagecustomdata->courseid);
-            $this->assertObjectHasAttribute('notificationiconurl', $messagecustomdata);
-            $this->assertObjectHasAttribute('notificationpictureurl', $messagecustomdata);
+            $this->assertObjectHasProperty('notificationiconurl', $messagecustomdata);
+            $this->assertObjectHasProperty('notificationpictureurl', $messagecustomdata);
         }
 
         // Now, set the course to not visible.

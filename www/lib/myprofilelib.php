@@ -31,8 +31,6 @@ defined('MOODLE_INTERNAL') || die();
  * @param stdClass $user user object
  * @param bool $iscurrentuser is the user viewing profile, current user ?
  * @param stdClass $course course object
- *
- * @return bool
  */
 function core_myprofile_navigation(core_user\output\myprofile\tree $tree, $user, $iscurrentuser, $course) {
     global $CFG, $USER, $DB, $PAGE, $OUTPUT;
@@ -335,7 +333,7 @@ function core_myprofile_navigation(core_user\output\myprofile\tree $tree, $user,
         foreach ($fields as $formfield) {
             if ($formfield->show_field_content()) {
                 $node = new core_user\output\myprofile\node('contact', 'custom_field_' . $formfield->field->shortname,
-                    format_string($formfield->field->name), null, null, $formfield->display_data());
+                    $formfield->display_name(), null, null, $formfield->display_data());
                 $tree->add_node($node);
             }
         }

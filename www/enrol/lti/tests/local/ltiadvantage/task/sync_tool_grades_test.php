@@ -37,7 +37,7 @@ require_once(__DIR__ . '/../lti_advantage_testcase.php');
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @coversDefaultClass \enrol_lti\local\ltiadvantage\task\sync_tool_grades
  */
-class sync_tool_grades_test extends \lti_advantage_testcase {
+final class sync_tool_grades_test extends \lti_advantage_testcase {
     /**
      * Get a task which has a mocked ags instance injected, meaning no real calls will be made to the platform.
      *
@@ -217,7 +217,7 @@ class sync_tool_grades_test extends \lti_advantage_testcase {
      *
      * @covers ::execute
      */
-    public function test_grade_sync_chronological_syncs() {
+    public function test_grade_sync_chronological_syncs(): void {
         $this->resetAfterTest();
 
         [$course, $resource] = $this->create_test_environment();
@@ -316,7 +316,7 @@ class sync_tool_grades_test extends \lti_advantage_testcase {
      *
      * @covers ::execute
      */
-    public function test_grade_sync_multiple_resource_links() {
+    public function test_grade_sync_multiple_resource_links(): void {
         $this->resetAfterTest();
 
         [$course, $resource] = $this->create_test_environment();
@@ -389,7 +389,7 @@ class sync_tool_grades_test extends \lti_advantage_testcase {
      *
      * @covers ::execute
      */
-    public function test_sync_grades_no_service_endpoint() {
+    public function test_sync_grades_no_service_endpoint(): void {
         $this->resetAfterTest();
         [$course, $resource] = $this->create_test_environment();
         $launchservice = $this->get_tool_launch_service();
@@ -420,7 +420,7 @@ class sync_tool_grades_test extends \lti_advantage_testcase {
      *
      * @covers ::execute
      */
-    public function test_sync_grades_disabled_instance() {
+    public function test_sync_grades_disabled_instance(): void {
         $this->resetAfterTest();
         global $DB;
 
@@ -450,7 +450,7 @@ class sync_tool_grades_test extends \lti_advantage_testcase {
      *
      * @covers ::execute
      */
-    public function test_sync_grades_deleted_context() {
+    public function test_sync_grades_deleted_context(): void {
         $this->resetAfterTest();
         global $DB;
 
@@ -487,7 +487,7 @@ class sync_tool_grades_test extends \lti_advantage_testcase {
      *
      * @covers ::execute
      */
-    public function test_sync_grades_completion_required() {
+    public function test_sync_grades_completion_required(): void {
         $this->resetAfterTest();
         global $CFG;
         require_once($CFG->libdir . '/completionlib.php');
@@ -681,7 +681,7 @@ class sync_tool_grades_test extends \lti_advantage_testcase {
      *
      * @covers ::execute
      */
-    public function test_sync_grades_failed_service_call() {
+    public function test_sync_grades_failed_service_call(): void {
         $this->resetAfterTest();
         [$course, $resource] = $this->create_test_environment();
         $launchservice = $this->get_tool_launch_service();
@@ -743,7 +743,7 @@ class sync_tool_grades_test extends \lti_advantage_testcase {
      *
      * @covers ::execute
      */
-    public function test_sync_grades_coupled_lineitem() {
+    public function test_sync_grades_coupled_lineitem(): void {
         $this->resetAfterTest();
 
         [$course, $resource] = $this->create_test_environment();
@@ -817,7 +817,7 @@ class sync_tool_grades_test extends \lti_advantage_testcase {
      *
      * @covers ::execute
      */
-    public function test_sync_grades_none_or_many_lineitems_activity_context() {
+    public function test_sync_grades_none_or_many_lineitems_activity_context(): void {
         $this->resetAfterTest();
 
         [$course, $resource] = $this->create_test_environment();
@@ -894,7 +894,7 @@ class sync_tool_grades_test extends \lti_advantage_testcase {
      *
      * @covers ::execute
      */
-    public function test_sync_grades_none_or_many_lineitems_course_context() {
+    public function test_sync_grades_none_or_many_lineitems_course_context(): void {
         $this->resetAfterTest();
 
         [$course, $tool1, $tool2, $resource] = $this->create_test_environment();

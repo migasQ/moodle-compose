@@ -30,14 +30,14 @@ require_once($CFG->dirroot . '/question/editlib.php');
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @coversDefaultClass \qbank_history\question_history_view
  */
-class question_history_view_test extends \advanced_testcase {
+final class question_history_view_test extends \advanced_testcase {
 
     /**
      * Test that the history page shows all the versions of a question.
      *
      * @covers ::display
      */
-    public function test_question_history_shows_all_versions() {
+    public function test_question_history_shows_all_versions(): void {
         $this->resetAfterTest();
         $this->setAdminUser();
         $generator = $this->getDataGenerator();
@@ -89,7 +89,7 @@ class question_history_view_test extends \advanced_testcase {
      *
      * @covers ::display_question_bank_header
      */
-    public function test_display_question_bank_header() {
+    public function test_display_question_bank_header(): void {
         $this->resetAfterTest();
         $this->setAdminUser();
         $generator = $this->getDataGenerator();

@@ -33,8 +33,9 @@ use zip_archive;
  * @copyright  2019 Victor Deniz <victor@moodle.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @runTestsInSeparateProcesses
+ * @covers \core_h5p\file_storage
  */
-class file_storage_test extends \advanced_testcase {
+final class file_storage_test extends \advanced_testcase {
 
     /** @var \core_h5p\file_storage H5P file storage instance */
     protected $h5p_file_storage;
@@ -69,11 +70,9 @@ class file_storage_test extends \advanced_testcase {
         // Get value of protected properties.
         $h5p_fs_rc = new \ReflectionClass(file_storage::class);
         $h5p_file_storage_context = $h5p_fs_rc->getProperty('context');
-        $h5p_file_storage_context->setAccessible(true);
         $this->h5p_fs_context = $h5p_file_storage_context->getValue($this->h5p_file_storage);
 
         $h5p_file_storage_fs = $h5p_fs_rc->getProperty('fs');
-        $h5p_file_storage_fs->setAccessible(true);
         $this->h5p_fs_fs = $h5p_file_storage_fs->getValue($this->h5p_file_storage);
     }
 
@@ -320,7 +319,7 @@ class file_storage_test extends \advanced_testcase {
     /**
      * Test that cached files can be retrieved via a key.
      */
-    public function test_getCachedAssets() {
+    public function test_getCachedAssets(): void {
 
         $basedirectory = $this->h5p_tempath . '/' . 'test-1.0';
 
@@ -416,7 +415,7 @@ class file_storage_test extends \advanced_testcase {
     /**
      * Retrieve content from a file given a specific path.
      */
-    public function test_getContent() {
+    public function test_getContent(): void {
         $basedirectory = $this->h5p_tempath . '/' . 'test-1.0';
 
         $machinename = 'TestLib';
@@ -440,7 +439,7 @@ class file_storage_test extends \advanced_testcase {
     /**
      * Test that an upgrade script can be found on the file system.
      */
-    public function test_getUpgradeScript() {
+    public function test_getUpgradeScript(): void {
         // Upload an upgrade file.
         $machinename = 'TestLib';
         $majorversion = 3;
@@ -474,10 +473,10 @@ class file_storage_test extends \advanced_testcase {
      * |     |- testscript.min.js
      * |- h5p.json
      */
-    public function test_saveFileFromZip() {
+    public function test_saveFileFromZip(): void {
 
         $ziparchive = new zip_archive();
-        $path = __DIR__ . '/fixtures/h5ptest.zip';
+        $path = self::get_fixture_path(__NAMESPACE__, 'h5ptest.zip');
         $result = $ziparchive->open($path, file_archive::OPEN);
 
         $files = $ziparchive->list_files();
@@ -502,7 +501,7 @@ class file_storage_test extends \advanced_testcase {
     /**
      * Test that a library is fully deleted from the file system
      */
-    public function test_delete_library() {
+    public function test_delete_library(): void {
 
         $basedirectory = $this->h5p_tempath . '/' . 'test-1.0';
 
@@ -564,7 +563,7 @@ class file_storage_test extends \advanced_testcase {
         $admin = get_admin();
 
         // Prepare a valid .H5P file.
-        $path = __DIR__ . '/fixtures/'.$filename;
+        $path = self::get_fixture_path(__NAMESPACE__, $filename);
 
         // Libraries can be updated when the file has been created by admin, even when the current user is not the admin.
         $this->setUser($admin);
@@ -598,7 +597,7 @@ class file_storage_test extends \advanced_testcase {
      *
      * @return array
      */
-    public function get_icon_url_provider(): array {
+    public static function get_icon_url_provider(): array {
         return [
             'Icon included' => [
                 'filltheblanks.h5p',
@@ -625,7 +624,6 @@ class file_storage_test extends \advanced_testcase {
 
         // Set get_file method accessibility.
         $method = new ReflectionMethod(file_storage::class, 'get_file');
-        $method->setAccessible(true);
 
         $contentfile = $method->invoke(new file_storage(), file_storage::CONTENT_FILEAREA, $h5pcontentid, $file);
 
@@ -668,7 +666,6 @@ class file_storage_test extends \advanced_testcase {
 
         // Set get_file method accessibility.
         $method = new ReflectionMethod(file_storage::class, 'move_file');
-        $method->setAccessible(true);
 
         $method->invoke(new file_storage(), $file, $h5pcontentid);
 
@@ -851,8 +848,6 @@ class file_storage_test extends \advanced_testcase {
 
     /**
      * Test H5P custom styles generation.
-     *
-     * @covers ::generate_custom_styles
      */
     public function test_generate_custom_styles(): void {
         \set_config('h5pcustomcss', '.debug { color: #fab; }', 'core_h5p');
@@ -899,8 +894,6 @@ class file_storage_test extends \advanced_testcase {
 
     /**
      * Test H5P custom styles retrieval.
-     *
-     * @covers ::get_custom_styles
      */
     public function test_get_custom_styles(): void {
         global $CFG;

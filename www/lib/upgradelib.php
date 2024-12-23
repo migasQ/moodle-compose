@@ -373,43 +373,12 @@ function upgrade_main_savepoint($result, $version, $allowabort=true) {
  *
  * @category upgrade
  * @param bool $result false if upgrade step failed, true if completed
- * @param string or float $version main version
+ * @param string|float $version main version
  * @param string $modname name of module
  * @param bool $allowabort allow user to abort script execution here
- * @return void
  */
 function upgrade_mod_savepoint($result, $version, $modname, $allowabort=true) {
-    global $DB;
-
-    $component = 'mod_'.$modname;
-
-    if (!$result) {
-        throw new upgrade_exception($component, $version);
-    }
-
-    $dbversion = $DB->get_field('config_plugins', 'value', array('plugin'=>$component, 'name'=>'version'));
-
-    if (!$module = $DB->get_record('modules', array('name'=>$modname))) {
-        throw new \moodle_exception('modulenotexist', 'debug', '', $modname);
-    }
-
-    if ($dbversion >= $version) {
-        // something really wrong is going on in upgrade script
-        throw new downgrade_exception($component, $dbversion, $version);
-    }
-    set_config('version', $version, $component);
-
-    upgrade_log(UPGRADE_LOG_NORMAL, $component, 'Upgrade savepoint reached');
-
-    // reset upgrade timeout to default
-    upgrade_set_timeout();
-
-    core_upgrade_time::record_savepoint($version);
-
-    // this is a safe place to stop upgrades if user aborts page loading
-    if ($allowabort and connection_aborted()) {
-        die;
-    }
+    upgrade_plugin_savepoint($result, $version, 'mod', $modname, $allowabort);
 }
 
 /**
@@ -419,57 +388,25 @@ function upgrade_mod_savepoint($result, $version, $modname, $allowabort=true) {
  *
  * @category upgrade
  * @param bool $result false if upgrade step failed, true if completed
- * @param string or float $version main version
+ * @param string|float $version main version
  * @param string $blockname name of block
  * @param bool $allowabort allow user to abort script execution here
- * @return void
  */
 function upgrade_block_savepoint($result, $version, $blockname, $allowabort=true) {
-    global $DB;
-
-    $component = 'block_'.$blockname;
-
-    if (!$result) {
-        throw new upgrade_exception($component, $version);
-    }
-
-    $dbversion = $DB->get_field('config_plugins', 'value', array('plugin'=>$component, 'name'=>'version'));
-
-    if (!$block = $DB->get_record('block', array('name'=>$blockname))) {
-        throw new \moodle_exception('blocknotexist', 'debug', '', $blockname);
-    }
-
-    if ($dbversion >= $version) {
-        // something really wrong is going on in upgrade script
-        throw new downgrade_exception($component, $dbversion, $version);
-    }
-    set_config('version', $version, $component);
-
-    upgrade_log(UPGRADE_LOG_NORMAL, $component, 'Upgrade savepoint reached');
-
-    // reset upgrade timeout to default
-    upgrade_set_timeout();
-
-    core_upgrade_time::record_savepoint($version);
-
-    // this is a safe place to stop upgrades if user aborts page loading
-    if ($allowabort and connection_aborted()) {
-        die;
-    }
+    upgrade_plugin_savepoint($result, $version, 'block', $blockname, $allowabort);
 }
 
 /**
- * Plugins upgrade savepoint, marks end of blocks upgrade blocks
+ * Plugins upgrade savepoint, marks end of plugin upgrade blocks
  * It stores plugin version, resets upgrade timeout
  * and abort upgrade if user cancels page loading.
  *
  * @category upgrade
  * @param bool $result false if upgrade step failed, true if completed
- * @param string or float $version main version
+ * @param string|float $version main version
  * @param string $type The type of the plugin.
  * @param string $plugin The name of the plugin.
  * @param bool $allowabort allow user to abort script execution here
- * @return void
  */
 function upgrade_plugin_savepoint($result, $version, $type, $plugin, $allowabort=true) {
     global $DB;
@@ -478,6 +415,11 @@ function upgrade_plugin_savepoint($result, $version, $type, $plugin, $allowabort
 
     if (!$result) {
         throw new upgrade_exception($component, $version);
+    }
+
+    // Ensure we're dealing with a real component.
+    if (core_component::get_component_directory($component) === null) {
+        throw new moodle_exception('pluginnotexist', 'error', '', $component);
     }
 
     $dbversion = $DB->get_field('config_plugins', 'value', array('plugin'=>$component, 'name'=>'version'));
@@ -513,6 +455,19 @@ function upgrade_stale_php_files_present(): bool {
     global $CFG;
 
     $someexamplesofremovedfiles = [
+        // Removed in 4.5.
+        '/backup/util/ui/classes/copy/copy.php',
+        '/backup/util/ui/yui/build/moodle-backup-backupselectall/moodle-backup-backupselectall.js',
+        '/cache/classes/interfaces.php',
+        '/cache/disabledlib.php',
+        '/cache/lib.php',
+        // Removed in 4.4.
+        '/README.txt',
+        '/lib/dataformatlib.php',
+        '/lib/horde/readme_moodle.txt',
+        '/lib/yui/src/formchangechecker/js/formchangechecker.js',
+        '/mod/forum/pix/monologo.png',
+        '/question/tests/behat/behat_question.php',
         // Removed in 4.3.
         '/badges/ajax.php',
         '/course/editdefaultcompletion.php',
@@ -1949,9 +1904,6 @@ function upgrade_core($version, $verbose) {
         $syscontext->mark_dirty();
         core_upgrade_time::record_detail('context_system::mark_dirty');
 
-        // Prompt admin to register site. Reminder flow handles sites already registered, so admin won't be prompted if registered.
-        set_config('registrationpending', true);
-
         print_upgrade_part_end('moodle', false, $verbose);
     } catch (Exception $ex) {
         upgrade_handle_exception($ex);
@@ -2003,6 +1955,10 @@ function upgrade_noncore($verbose) {
         core_upgrade_time::record_detail('core_component::get_all_versions_hash');
         set_config('allcomponenthash', core_component::get_all_component_hash());
         core_upgrade_time::record_detail('core_component::get_all_component_hash');
+
+        // Prompt admin to register site. Reminder flow handles sites already registered, so admin won't be prompted if registered.
+        // Defining for non-core upgrades also covers core upgrades.
+        set_config('registrationpending', true);
 
         // Purge caches again, just to be sure we arn't holding onto old stuff now.
         if (!defined('CLI_UPGRADE_RUNNING') || !CLI_UPGRADE_RUNNING) {
@@ -2892,6 +2848,24 @@ function check_oracle_usage(environment_results $result): ?environment_results {
     if ($CFG->dbtype === 'oci') {
         $result->setInfo('oracle_database_usage');
         $result->setFeedbackStr('oracledatabaseinuse');
+        return $result;
+    }
+
+    return null;
+}
+
+/**
+ * Check if asynchronous backups are enabled.
+ *
+ * @param environment_results $result
+ * @return environment_results|null
+ */
+function check_async_backup(environment_results $result): ?environment_results {
+    global $CFG;
+
+    if (!during_initial_install() && empty($CFG->enableasyncbackup)) { // Have to use $CFG as config table may not be available.
+        $result->setInfo('Asynchronous backups disabled');
+        $result->setFeedbackStr('asyncbackupdisabled');
         return $result;
     }
 

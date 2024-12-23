@@ -48,6 +48,7 @@ class communication_feature implements
     \core_communication\form_provider,
     \core_communication\room_chat_provider,
     \core_communication\room_user_provider,
+    \core_communication\synchronise_provider,
     \core_communication\user_provider {
     /** @var ?matrix_room $room The matrix room object to update room information */
     private ?matrix_room $room = null;
@@ -628,8 +629,9 @@ class communication_feature implements
         if (!empty($forceremoval)) {
             // Remove the users from the power levels if they are not admins.
             foreach ($forceremoval as $userid) {
-                if ($newuserpowerlevels < matrix_constants::POWER_LEVEL_MAXIMUM) {
-                    unset($newuserpowerlevels[$userid]);
+                $muid = matrix_user_manager::get_matrixid_from_moodle($userid);
+                if (isset($newuserpowerlevels[$muid]) && $newuserpowerlevels[$muid] < matrix_constants::POWER_LEVEL_MAXIMUM) {
+                    unset($newuserpowerlevels[$muid]);
                 }
             }
         }
@@ -638,7 +640,6 @@ class communication_feature implements
             // No changes to make.
             return;
         }
-
 
         // Update the power levels for the room.
         $this->matrixapi->update_room_power_levels(
@@ -721,14 +722,7 @@ class communication_feature implements
             );
         }
 
-        $powerdata = $this->get_body($response);
-        $powerdata = array_filter(
-            $powerdata->rooms->join->{$roomid}->state->events,
-            fn($value) => $value->type === 'm.room.power_levels'
-        );
-        $powerdata = reset($powerdata);
-
-        return $powerdata->content;
+        return $this->get_body($response);
     }
 
     /**
@@ -790,5 +784,9 @@ class communication_feature implements
             return true;
         }
         return false;
+    }
+
+    public function synchronise_room_members(): void {
+        $this->set_matrix_power_levels();
     }
 }

@@ -37,7 +37,7 @@ require_once($CFG->dirroot . '/question/engine/tests/helpers.php');
  * @copyright  2011 The Open University
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class question_test extends \advanced_testcase {
+final class question_test extends \advanced_testcase {
     /**
      * Test is complete response
      *
@@ -269,8 +269,6 @@ class question_test extends \advanced_testcase {
 
         $this->resetAfterTest();
 
-        $qtype = new qtype_calculated();
-
         // Create a question.
         $q = \test_question_maker::get_question_data('calculated', 'mult');
         $q->id = 99;
@@ -284,6 +282,7 @@ class question_test extends \advanced_testcase {
         $units[] = $unit;
         $DB->insert_records("question_numerical_units", $units);
 
+        $qtype = new qtype_calculated();
         $qtypeobj = question_bank::get_qtype($qtype->name());
         $fakedata = ["a" => "5.7", "b" => "3.3"];
 

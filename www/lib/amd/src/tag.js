@@ -26,26 +26,27 @@ import $ from 'jquery';
 import {call as fetchMany} from 'core/ajax';
 import * as Notification from 'core/notification';
 import * as Templates from 'core/templates';
-import {
-    get_string as getString,
-    get_strings as getStrings,
-} from 'core/str';
+import {getString} from 'core/str';
 import * as ModalEvents from 'core/modal_events';
 import Pending from 'core/pending';
 import SaveCancelModal from 'core/modal_save_cancel';
 import Config from 'core/config';
+import {eventTypes as inplaceEditableEvents} from 'core/local/inplace_editable/events';
+import * as reportSelectors from 'core_reportbuilder/local/selectors';
 
 const getTagIndex = (tagindex) => fetchMany([{
     methodname: 'core_tag_get_tagindex',
     args: {tagindex}
 }])[0];
 
-const getCheckedTags = (form) => form.querySelectorAll('input[data-togglegroup="tags-manage"][data-toggle="slave"]:checked');
+const getCheckedTags = (root) => root.querySelectorAll('[data-togglegroup="report-select-all"][data-toggle="slave"]:checked');
 
 const handleCombineRequest = async(tagManagementCombine) => {
     const pendingPromise = new Pending('core/tag:tag-management-combine');
     const form = tagManagementCombine.closest('form');
-    const checkedTags = getCheckedTags(form);
+
+    const reportElement = document.querySelector(reportSelectors.regions.report);
+    const checkedTags = getCheckedTags(reportElement);
 
     if (checkedTags.length <= 1) {
         // We need at least 2 tags to combine them.
@@ -85,6 +86,13 @@ const handleCombineRequest = async(tagManagementCombine) => {
         tempElement.hidden = true;
         tempElement.name = tagManagementCombine.name;
         form.append(tempElement);
+
+        // Append selected tags element.
+        const tagsElement = document.createElement('input');
+        tagsElement.hidden = true;
+        tagsElement.name = 'tagschecked';
+        tagsElement.value = [...checkedTags].map(check => check.value).join(',');
+        form.append(tagsElement);
 
         // Get the selected tag from the modal.
         var maintag = $('input[name=maintag]:checked', '#combinetags_form').val();
@@ -157,8 +165,12 @@ const addStandardTags = async() => {
     pendingPromise.resolve();
 };
 
-const deleteSelectedTags = async(form) => {
-    const checkedTags = getCheckedTags(form);
+const deleteSelectedTags = async(bulkActionDeleteButton) => {
+    const form = bulkActionDeleteButton.closest('form');
+
+    const reportElement = document.querySelector(reportSelectors.regions.report);
+    const checkedTags = getCheckedTags(reportElement);
+
     if (!checkedTags.length) {
         return;
     }
@@ -174,8 +186,16 @@ const deleteSelectedTags = async(form) => {
         // Append this temp element in the form in the tags list, not the form in the modal. Confusing, right?!?
         const tempElement = document.createElement('input');
         tempElement.hidden = true;
-        tempElement.name = 'bulkdelete';
+        tempElement.name = bulkActionDeleteButton.name;
         form.append(tempElement);
+
+        // Append selected tags element.
+        const tagsElement = document.createElement('input');
+        tagsElement.hidden = true;
+        tagsElement.name = 'tagschecked';
+        tagsElement.value = [...checkedTags].map(check => check.value).join(',');
+        form.append(tagsElement);
+
         form.submit();
     } catch {
         return;
@@ -303,37 +323,10 @@ export const initTagindexPage = async() => {
  * @method initManagePage
  */
 export const initManagePage = () => {
-    // Set cell 'time modified' to 'now' when any of the element is updated in this row.
-    $('body').on('updated', '[data-inplaceeditable]', function(e) {
-        var pendingPromise = new Pending('core/tag:initManagePage');
-
-        getStrings([
-            {
-                key: 'selecttag',
-                component: 'core_tag',
-            },
-            {
-                key: 'now',
-                component: 'core',
-            },
-        ])
-        .then(function(result) {
-            $('label[for="tagselect' + e.ajaxreturn.itemid + '"]').html(result[0]);
-            $(e.target).closest('tr').find('td.col-timemodified').html(result[1]);
-
-            return;
-        })
-        .always(pendingPromise.resolve)
-        .catch(Notification.exception);
-
-        if (e.ajaxreturn.itemtype === 'tagflag') {
-            var row = $(e.target).closest('tr');
-            if (e.ajaxreturn.value === '0') {
-                row.removeClass('table-warning');
-            } else {
-                row.addClass('table-warning');
-            }
-        }
+    // Toggle row class when updating flag.
+    $('body').on(inplaceEditableEvents.elementUpdated, '[data-inplaceeditable][data-itemtype=tagflag]', function(e) {
+        var row = $(e.target).closest('tr');
+        row.toggleClass('table-warning', e.detail.ajaxreturn.value === '1');
     });
 
     // Confirmation for bulk tag combine button.
@@ -344,7 +337,7 @@ export const initManagePage = () => {
             handleCombineRequest(tagManagementCombine);
         }
 
-        if (e.target.closest('a[data-action="addstandardtag"]')) {
+        if (e.target.closest('[data-action="addstandardtag"]')) {
             e.preventDefault();
             addStandardTags();
         }
@@ -352,7 +345,7 @@ export const initManagePage = () => {
         const bulkActionDeleteButton = e.target.closest('#tag-management-delete');
         if (bulkActionDeleteButton) {
             e.preventDefault();
-            deleteSelectedTags(bulkActionDeleteButton.closest('form'));
+            deleteSelectedTags(bulkActionDeleteButton);
         }
 
         const rowDeleteButton = e.target.closest('.tagdelete');
@@ -363,9 +356,9 @@ export const initManagePage = () => {
     });
 
     // When user changes tag name to some name that already exists suggest to combine the tags.
-    $('body').on('updatefailed', '[data-inplaceeditable][data-itemtype=tagname]', async(e) => {
-        var exception = e.exception; // The exception object returned by the callback.
-        var newvalue = e.newvalue; // The value that user tried to udpated the element to.
+    $('body').on(inplaceEditableEvents.elementUpdateFailed, '[data-inplaceeditable][data-itemtype=tagname]', async(e) => {
+        var exception = e.detail.exception; // The exception object returned by the callback.
+        var newvalue = e.detail.newvalue; // The value that user tried to udpated the element to.
         var tagid = $(e.target).attr('data-itemid');
         if (exception.errorcode !== 'namesalreadybeeingused') {
             return;
@@ -400,10 +393,10 @@ export const initManagePage = () => {
  * @method initManageCollectionsPage
  */
 export const initManageCollectionsPage = () => {
-    $('body').on('updated', '[data-inplaceeditable]', function(e) {
+    $('body').on(inplaceEditableEvents.elementUpdated, '[data-inplaceeditable]', function(e) {
         var pendingPromise = new Pending('core/tag:initManageCollectionsPage-updated');
 
-        var ajaxreturn = e.ajaxreturn,
+        var ajaxreturn = e.detail.ajaxreturn,
             areaid, collid, isenabled;
         if (ajaxreturn.component === 'core_tag' && ajaxreturn.itemtype === 'tagareaenable') {
             areaid = $(this).attr('data-itemid');

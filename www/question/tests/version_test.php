@@ -29,7 +29,7 @@ use question_bank;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @coversDefaultClass \question_bank
  */
-class version_test extends \advanced_testcase {
+final class version_test extends \advanced_testcase {
 
     /**
      * @var \context_module module context.
@@ -76,7 +76,7 @@ class version_test extends \advanced_testcase {
      *
      * @covers ::load_question
      */
-    public function test_make_question_create_version_and_bank_entry() {
+    public function test_make_question_create_version_and_bank_entry(): void {
         global $DB;
 
         $qcategory = $this->qgenerator->create_question_category(['contextid' => $this->context->id]);
@@ -111,7 +111,7 @@ class version_test extends \advanced_testcase {
      * @covers ::load_question
      * @covers ::question_delete_question
      */
-    public function test_delete_question_delete_versions() {
+    public function test_delete_question_delete_versions(): void {
         global $DB;
 
         $qcategory = $this->qgenerator->create_question_category(['contextid' => $this->context->id]);
@@ -164,7 +164,7 @@ class version_test extends \advanced_testcase {
      * @covers ::quiz_add_quiz_question
      * @covers ::question_delete_question
      */
-    public function test_delete_question_in_use() {
+    public function test_delete_question_in_use(): void {
         global $DB;
 
         $qcategory = $this->qgenerator->create_question_category(['contextid' => $this->context->id]);
@@ -197,7 +197,7 @@ class version_test extends \advanced_testcase {
      * @covers ::load_question
      * @covers ::quiz_add_quiz_question
      */
-    public function test_move_category_with_questions() {
+    public function test_move_category_with_questions(): void {
         global $DB;
 
         $qcategory = $this->qgenerator->create_question_category(['contextid' => $this->context->id]);
@@ -212,12 +212,8 @@ class version_test extends \advanced_testcase {
         quiz_add_quiz_question($question->id, $this->quiz);
 
         // Move the category to system context.
-        $contexts = new \core_question\local\bank\question_edit_contexts($systemcontext);
-        $qcobject = new \qbank_managecategories\question_category_object(null,
-            new \moodle_url('/question/bank/managecategories/category.php', ['courseid' => SITEID]),
-            $contexts->having_one_edit_tab_cap('categories'), 0, null, 0,
-            $contexts->having_cap('moodle/question:add'));
-        $qcobject->move_questions_and_delete_category($qcategorychild->id, $qcategorysys->id);
+        $manager = new category_manager();
+        $manager->move_questions_and_delete_category($qcategorychild->id, $qcategorysys->id);
 
         // The bank entry record should point to the new category in order to not break quizzes.
         $sql = "SELECT qbe.questioncategoryid
@@ -232,7 +228,7 @@ class version_test extends \advanced_testcase {
      *
      * @covers ::load_question
      */
-    public function test_id_number_in_bank_entry() {
+    public function test_id_number_in_bank_entry(): void {
         global $DB;
 
         $qcategory = $this->qgenerator->create_question_category(['contextid' => $this->context->id]);
@@ -271,7 +267,7 @@ class version_test extends \advanced_testcase {
      *
      * @covers ::get_all_versions_of_question
      */
-    public function test_get_all_versions_of_question() {
+    public function test_get_all_versions_of_question(): void {
         $qcategory = $this->qgenerator->create_question_category(['contextid' => $this->context->id]);
         $question = $this->qgenerator->create_question('shortanswer', null,
             [
@@ -300,7 +296,7 @@ class version_test extends \advanced_testcase {
      *
      * @covers ::get_all_versions_of_questions
      */
-    public function test_get_all_versions_of_questions() {
+    public function test_get_all_versions_of_questions(): void {
         global $DB;
 
         $questionversions = [];
@@ -328,6 +324,42 @@ class version_test extends \advanced_testcase {
     }
 
     /**
+     * Test the get_version_of_questions function.
+     *
+     * @covers ::get_version_of_questions
+     */
+    public function test_get_version_of_questions(): void {
+        global $DB;
+
+        $qcategory = $this->qgenerator->create_question_category(['contextid' => $this->context->id]);
+        $question = $this->qgenerator->create_question('shortanswer', null, ['category' => $qcategory->id]);
+
+        // Update the question to create new versions.
+        $question = $this->qgenerator->update_question($question, null, ['name' => 'Version 2']);
+
+        // Get the current version of the question.
+        $currentversions = question_bank::get_version_of_questions([$question->id]);
+
+        // Get questionbankentryid for assertion.
+        $questionbankentryid = $DB->get_field('question_versions', 'questionbankentryid',
+            ['questionid' => $question->id]);
+
+        // Assert that the structure matches.
+        $this->assertArrayHasKey($questionbankentryid, $currentversions);
+        $this->assertArrayHasKey(2, $currentversions[$questionbankentryid]);
+        $this->assertEquals($question->id, $currentversions[$questionbankentryid][2]);
+
+        // Update the question to create new versions.
+        $question = $this->qgenerator->update_question($question, null, ['name' => 'Version 3']);
+        $currentversions = question_bank::get_version_of_questions([$question->id]);
+
+        // Assert the updated version.
+        $this->assertArrayHasKey($questionbankentryid, $currentversions);
+        $this->assertArrayHasKey(3, $currentversions[$questionbankentryid]);
+        $this->assertEquals($question->id, $currentversions[$questionbankentryid][3]);
+    }
+
+    /**
      * Test population of latestversion field in question_definition objects
      *
      * When an instance of question_definition is created, it is added to an array of pending definitions which
@@ -337,14 +369,13 @@ class version_test extends \advanced_testcase {
      * @covers \core_question\output\question_version_info::populate_latest_versions()
      * @return void
      */
-    public function test_populate_definition_latestversions() {
+    public function test_populate_definition_latestversions(): void {
         $qcategory = $this->qgenerator->create_question_category(['contextid' => $this->context->id]);
         $question1 = $this->qgenerator->create_question('shortanswer', null, ['category' => $qcategory->id]);
         $question2 = $this->qgenerator->create_question('shortanswer', null, ['category' => $qcategory->id]);
         $question3 = $this->qgenerator->update_question($question2, null, ['idnumber' => 'id2']);
 
         $latestversioninspector = new \ReflectionProperty('question_definition', 'latestversion');
-        $latestversioninspector->setAccessible(true);
         $this->assertEmpty(question_version_info::$pendingdefinitions);
 
         $questiondef1 = question_bank::load_question($question1->id);

@@ -38,14 +38,14 @@ use core_reportbuilder\local\report\{column, filter};
 class comment extends base {
 
     /**
-     * Database tables that this entity uses and their default aliases
+     * Database tables that this entity uses
      *
-     * @return array
+     * @return string[]
      */
-    protected function get_default_table_aliases(): array {
+    protected function get_default_tables(): array {
         return [
-            'comments' => 'c',
-            'context' => 'cmctx',
+            'comments',
+            'context',
         ];
     }
 
@@ -193,10 +193,8 @@ class comment extends base {
             $this->get_entity_name()
         ))
             ->add_joins($this->get_joins())
-            ->set_type(column::TYPE_INTEGER)
             ->add_fields("{$commentalias}.itemid")
-            ->set_is_sortable(true)
-            ->set_disabled_aggregation_all();
+            ->set_is_sortable(true);
 
         // Time created.
         $columns[] = (new column(

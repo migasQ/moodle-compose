@@ -26,7 +26,7 @@ use filter_manager;
  * @copyright 2015 The Open University
  * @license   http://www.gnu.org/copyleft/gpl.html GNU Public License
  */
-class filter_manager_test extends \advanced_testcase {
+final class filter_manager_test extends \advanced_testcase {
 
     /**
      * Helper method to apply filters to some text and return the result.
@@ -45,7 +45,7 @@ class filter_manager_test extends \advanced_testcase {
         return $filtermanager->filter_text($text, $PAGE->context, $filteroptions, $skipfilters);
     }
 
-    public function test_filter_normal() {
+    public function test_filter_normal(): void {
         $this->resetAfterTest();
         filter_set_global_state('emoticon', TEXTFILTER_ON);
         $this->assertMatchesRegularExpression(
@@ -54,14 +54,14 @@ class filter_manager_test extends \advanced_testcase {
             $this->filter_text('<p>:-)</p>', array()));
     }
 
-    public function test_one_filter_disabled() {
+    public function test_one_filter_disabled(): void {
         $this->resetAfterTest();
         filter_set_global_state('emoticon', TEXTFILTER_ON);
         $this->assertEquals('<p>:-)</p>',
                 $this->filter_text('<p>:-)</p>', array('emoticon')));
     }
 
-    public function test_disabling_other_filter_does_not_break_it() {
+    public function test_disabling_other_filter_does_not_break_it(): void {
         $this->resetAfterTest();
         filter_set_global_state('emoticon', TEXTFILTER_ON);
         $this->assertMatchesRegularExpression('~^<p><img class="icon emoticon" alt="smile" ' .
@@ -69,7 +69,7 @@ class filter_manager_test extends \advanced_testcase {
             $this->filter_text('<p>:-)</p>', array('urltolink')));
     }
 
-    public function test_one_filter_of_two_disabled() {
+    public function test_one_filter_of_two_disabled(): void {
         $this->resetAfterTest();
         filter_set_global_state('emoticon', TEXTFILTER_ON);
         filter_set_global_state('urltolink', TEXTFILTER_ON);

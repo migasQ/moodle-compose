@@ -38,7 +38,7 @@ require_once($CFG->dirroot . '/question/classes/external.php');
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @covers \qbank_columnsortorder\column_manager
  */
-class column_manager_test extends advanced_testcase {
+final class column_manager_test extends advanced_testcase {
 
     /**
      * Generate a course and return a question bank view for the course context.
@@ -226,9 +226,9 @@ class column_manager_test extends advanced_testcase {
         $questionlistcolumns = $columnmanager->get_columns();
         $this->assertIsArray($questionlistcolumns);
         foreach ($questionlistcolumns as $columnnobject) {
-            $this->assertObjectHasAttribute('class', $columnnobject);
-            $this->assertObjectHasAttribute('name', $columnnobject);
-            $this->assertObjectHasAttribute('colname', $columnnobject);
+            $this->assertObjectHasProperty('class', $columnnobject);
+            $this->assertObjectHasProperty('name', $columnnobject);
+            $this->assertObjectHasProperty('colname', $columnnobject);
         }
     }
 
@@ -335,7 +335,7 @@ class column_manager_test extends advanced_testcase {
      *
      * @return void
      */
-    public function test_enable_columns() {
+    public function test_enable_columns(): void {
         $this->resetAfterTest(true);
         $this->setAdminUser();
         $questionbank = $this->get_question_bank();

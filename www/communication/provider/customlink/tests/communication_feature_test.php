@@ -32,7 +32,7 @@ require_once(__DIR__ . '/../../../tests/communication_test_helper_trait.php');
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @coversDefaultClass \communication_customlink\communication_feature
  */
-class communication_feature_test extends \advanced_testcase {
+final class communication_feature_test extends \advanced_testcase {
     use communication_test_helper_trait;
 
     public function setUp(): void {
@@ -87,6 +87,22 @@ class communication_feature_test extends \advanced_testcase {
         // Test the custom link URL is saved and can be retrieved as expected.
         $communicationprocessor->get_form_provider()->save_form_data($formdatainstance);
         $fetchedurl = $communicationprocessor->get_room_provider()->get_chat_room_url();
+        $this->assertEquals($customlinkurl, $fetchedurl);
+
+        // Test with empty customlinkurl.
+        $customlinkurlempty = '';
+        $formdatainstance = (object) ['customlinkurl' => $customlinkurlempty];
+        $communicationprocessor->get_form_provider()->save_form_data($formdatainstance);
+        $fetchedurl = $communicationprocessor->get_room_provider()->get_chat_room_url();
+        // It should not update the url to an empty one.
+        $this->assertEquals($customlinkurl, $fetchedurl);
+
+        // Test with null customlinkurl.
+        $customlinkurlempty = null;
+        $formdatainstance = (object) ['customlinkurl' => $customlinkurlempty];
+        $communicationprocessor->get_form_provider()->save_form_data($formdatainstance);
+        $fetchedurl = $communicationprocessor->get_room_provider()->get_chat_room_url();
+        // It should not update the url to a null one.
         $this->assertEquals($customlinkurl, $fetchedurl);
     }
 

@@ -39,7 +39,7 @@ require_once(__DIR__ . '/helpers.php');
  * @copyright 2013 The Open University
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class datalib_reporting_queries_test extends \qbehaviour_walkthrough_test_base {
+final class datalib_reporting_queries_test extends \qbehaviour_walkthrough_test_base {
 
     /** @var question_engine_data_mapper */
     protected $dm;
@@ -66,7 +66,7 @@ class datalib_reporting_queries_test extends \qbehaviour_walkthrough_test_base {
      * operations on the data, we use a single method to do the set-up, which
      * calls diffents methods to test each query.
      */
-    public function test_reporting_queries() {
+    public function test_reporting_queries(): void {
         // We create two usages, each with two questions, a short-answer marked
         // out of 5, and and essay marked out of 10.
         //

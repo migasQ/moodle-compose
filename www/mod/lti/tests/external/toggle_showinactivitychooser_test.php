@@ -32,13 +32,13 @@ require_once($CFG->dirroot . '/mod/lti/tests/mod_lti_testcase.php');
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @coversDefaultClass \mod_lti\external\toggle_showinactivitychooser
  */
-class toggle_showinactivitychooser_test extends \mod_lti_testcase {
+final class toggle_showinactivitychooser_test extends \mod_lti_testcase {
 
     /**
      * Test toggle_showinactivitychooser for course tool.
      * @covers ::execute
      */
-    public function test_toggle_showinactivitychooser_course_tool() {
+    public function test_toggle_showinactivitychooser_course_tool(): void {
         global $DB;
         $this->resetAfterTest();
 
@@ -80,7 +80,7 @@ class toggle_showinactivitychooser_test extends \mod_lti_testcase {
      * Test toggle_showinactivitychooser for site tool.
      * @covers ::execute
      */
-    public function test_toggle_showinactivitychooser_site_tool() {
+    public function test_toggle_showinactivitychooser_site_tool(): void {
         global $DB;
 
         $this->resetAfterTest();

@@ -1,5 +1,5 @@
 /**
- * TinyMCE version 6.6.2 (2023-08-09)
+ * TinyMCE version 7.3.0 (2024-08-07)
  */
 
 (function () {
@@ -254,12 +254,6 @@
                 data.type = name;
               }
               data = global$5.extend(node.attributes.map, data);
-            }
-            if (name === 'script') {
-              data = {
-                type: 'script',
-                source: node.attr('src')
-              };
             }
             if (name === 'source') {
               if (!data.source) {
@@ -540,9 +534,6 @@
         return '<video width="' + data.width + '" height="' + data.height + '"' + (data.poster ? ' poster="' + data.poster + '"' : '') + ' controls="controls">\n' + '<source src="' + data.source + '"' + (data.sourcemime ? ' type="' + data.sourcemime + '"' : '') + ' />\n' + (data.altsource ? '<source src="' + data.altsource + '"' + (data.altsourcemime ? ' type="' + data.altsourcemime + '"' : '') + ' />\n' : '') + '</video>';
       }
     };
-    const getScriptHtml = data => {
-      return '<script src="' + data.source + '"></script>';
-    };
     const dataToHtml = (editor, dataIn) => {
       var _a;
       const data = global$5.extend({}, dataIn);
@@ -588,8 +579,6 @@
           return getFlashHtml(data);
         } else if (data.sourcemime.indexOf('audio') !== -1) {
           return getAudioHtml(data, audioTemplateCallback);
-        } else if (data.type === 'script') {
-          return getScriptHtml(data);
         } else {
           return getVideoHtml(data, videoTemplateCallback);
         }
@@ -598,18 +587,18 @@
 
     const isMediaElement = element => element.hasAttribute('data-mce-object') || element.hasAttribute('data-ephox-embed-iri');
     const setup$2 = editor => {
+      editor.on('mousedown', e => {
+        const previewObj = editor.dom.getParent(e.target, '.mce-preview-object');
+        if (previewObj && editor.dom.getAttrib(previewObj, 'data-mce-selected') === '2') {
+          e.stopImmediatePropagation();
+        }
+      });
       editor.on('click keyup touchend', () => {
         const selectedNode = editor.selection.getNode();
         if (selectedNode && editor.dom.hasClass(selectedNode, 'mce-preview-object')) {
           if (editor.dom.getAttrib(selectedNode, 'data-mce-selected')) {
             selectedNode.setAttribute('data-mce-selected', '2');
           }
-        }
-      });
-      editor.on('ObjectSelected', e => {
-        const objectType = e.target.getAttribute('data-mce-object');
-        if (objectType === 'script') {
-          e.preventDefault();
         }
       });
       editor.on('ObjectResized', e => {
@@ -642,7 +631,7 @@
         if (cache[data.source]) {
           wrappedResolve(cache[data.source]);
         } else {
-          handler({ url: data.source }, wrappedResolve, rej);
+          handler({ url: data.source }).then(wrappedResolve).catch(rej);
         }
       });
     };
@@ -821,7 +810,8 @@
           name: 'source',
           type: 'urlinput',
           filetype: 'media',
-          label: 'Source'
+          label: 'Source',
+          picker_text: 'Browse files'
         }];
       const sizeInput = !hasDimensions(editor) ? [] : [{
           type: 'sizeinput',
@@ -1007,7 +997,9 @@
       if (name === 'iframe') {
         previewNode.attr({
           allowfullscreen: node.attr('allowfullscreen'),
-          frameborder: '0'
+          frameborder: '0',
+          sandbox: node.attr('sandbox'),
+          referrerpolicy: node.attr('referrerpolicy')
         });
       } else {
         const attrs = [
@@ -1118,7 +1110,7 @@
             });
           }
         });
-        parser.addNodeFilter('iframe,video,audio,object,embed,script', placeHolderConverter(editor));
+        parser.addNodeFilter('iframe,video,audio,object,embed', placeHolderConverter(editor));
         serializer.addAttributeFilter('data-mce-object', (nodes, name) => {
           var _a;
           let i = nodes.length;
@@ -1129,7 +1121,7 @@
             }
             const realElmName = node.attr(name);
             const realElm = new global$2(realElmName, 1);
-            if (realElmName !== 'audio' && realElmName !== 'script') {
+            if (realElmName !== 'audio') {
               const className = node.attr('class');
               if (className && className.indexOf('mce-preview-object') !== -1 && node.firstChild) {
                 realElm.attr({
@@ -1151,9 +1143,6 @@
               if (attrName.indexOf('data-mce-p-') === 0) {
                 realElm.attr(attrName.substr(11), attribs[ai].value);
               }
-            }
-            if (realElmName === 'script') {
-              realElm.attr('type', 'text/javascript');
             }
             const innerHtml = node.attr('data-mce-html');
             if (innerHtml) {

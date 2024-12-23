@@ -27,11 +27,11 @@
  */
 
 use auth_lti\local\ltiadvantage\utility\cookie_helper;
+use enrol_lti\local\ltiadvantage\lib\lti_cookie;
 use enrol_lti\local\ltiadvantage\lib\issuer_database;
 use enrol_lti\local\ltiadvantage\lib\launch_cache_session;
 use enrol_lti\local\ltiadvantage\repository\application_registration_repository;
 use enrol_lti\local\ltiadvantage\repository\deployment_repository;
-use Packback\Lti1p3\ImsStorage\ImsCookie;
 use Packback\Lti1p3\LtiOidcLogin;
 
 require_once(__DIR__."/../../config.php");
@@ -40,7 +40,7 @@ require_once(__DIR__."/../../config.php");
 // See http://www.imsglobal.org/spec/security/v1p0/#step-1-third-party-initiated-login.
 // Validate these here, despite further validation in the LTI 1.3 library.
 $iss = required_param('iss', PARAM_URL); // Issuer URI of the calling platform.
-$loginhint = required_param('login_hint', PARAM_INT); // Platform ID for the person to login.
+$loginhint = required_param('login_hint', PARAM_RAW); // Platform ID for the person to login.
 $targetlinkuri = required_param('target_link_uri', PARAM_URL); // The took launch URL.
 
 // Optional lti_message_hint. See https://www.imsglobal.org/spec/lti/v1p3#additional-login-parameters-0.
@@ -102,10 +102,10 @@ if (!isloggedin()) {
 }
 
 // Now, do the OIDC login.
-LtiOidcLogin::new(
+$redirecturl = LtiOidcLogin::new(
     new issuer_database(new application_registration_repository(), new deployment_repository()),
     new launch_cache_session(),
-    new ImsCookie()
-)
-    ->doOidcLoginRedirect($targetlinkuri)
-    ->doRedirect();
+    new lti_cookie()
+)->getRedirectUrl($targetlinkuri, $_REQUEST);
+
+redirect($redirecturl);

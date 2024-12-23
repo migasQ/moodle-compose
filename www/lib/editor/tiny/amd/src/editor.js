@@ -23,7 +23,7 @@
 
 import jQuery from 'jquery';
 import Pending from 'core/pending';
-import {getDefaultConfiguration} from './defaults';
+import {getDefaultConfiguration, getDefaultQuickbarsSelectionToolbar} from './defaults';
 import {getTinyMCE, baseUrl} from './loader';
 import * as Options from './options';
 import {addToolbarButton, addToolbarButtons, addToolbarSection,
@@ -121,7 +121,7 @@ export const getInstanceForElementId = elementId => getInstanceForElement(docume
 export const getInstanceForElement = element => {
     const instance = instanceMap.get(element);
     if (instance && instance.removed) {
-        instanceMap.remove(element);
+        instanceMap.delete(element);
         return undefined;
     }
     return instance;
@@ -133,11 +133,17 @@ export const getInstanceForElement = element => {
  * @param {object} config The configuration required to setup the editor
  * @param {string} config.elementId The HTML Node ID
  * @param {Object} config.options The editor plugin configuration
- * @return {Promise<TinyMCE>} The TinyMCE instance
  */
 export const setupForElementId = ({elementId, options}) => {
     const target = document.getElementById(elementId);
-    return setupForTarget(target, options);
+    // We will need to wrap the setupForTarget and editor.remove() calls in a setTimeout.
+    // Because other events callbacks will still try to run on the removed instance.
+    // This will cause an error on Firefox.
+    // We need to make TinyMCE to remove itself outside the event loop.
+    // @see https://github.com/tinymce/tinymce/issues/3129 for more details.
+    setTimeout(() => {
+        return setupForTarget(target, options);
+    }, 1);
 };
 
 /**
@@ -265,10 +271,15 @@ const getStandardConfig = (target, tinyMCE, options, plugins) => {
         // eslint-disable-next-line camelcase
         quickbars_insert_toolbar: '',
 
+        // If the target element is too small, disable the quickbars selection toolbar.
+        // The quickbars selection toolbar is not displayed correctly if the target element is too small.
+        // See: https://github.com/tinymce/tinymce/issues/9693.
+        quickbars_selection_toolbar: target.rows > 5 ? getDefaultQuickbarsSelectionToolbar() : false,
+
         // Override the standard block formats property (removing h1 & h2).
         // https://www.tiny.cloud/docs/tinymce/6/user-formatting-options/#block_formats
         // eslint-disable-next-line camelcase
-        block_formats: 'Paragraph=p; Heading 3=h3; Heading 4=h4; Heading 5=h5; Heading 6=h6; Preformatted=pre',
+        block_formats: 'Paragraph=p;Heading 3=h3;Heading 4=h4;Heading 5=h5;Heading 6=h6;Preformatted=pre;Blockquote=blockquote',
 
         // The list of plugins to include in the instance.
         // https://www.tiny.cloud/docs/tinymce/6/editor-important-options/#plugins
@@ -278,6 +289,11 @@ const getStandardConfig = (target, tinyMCE, options, plugins) => {
 
         // Skins
         skin: 'oxide',
+
+        // Do not show the help link in the status bar.
+        // https://www.tiny.cloud/docs/tinymce/latest/accessibility/#help_accessibility
+        // eslint-disable-next-line camelcase
+        help_accessibility: false,
 
         // Remove the "Upgrade" link for Tiny.
         // https://www.tiny.cloud/docs/tinymce/6/editor-premium-upgrade-promotion/
@@ -306,6 +322,22 @@ const getStandardConfig = (target, tinyMCE, options, plugins) => {
         // https://www.tiny.cloud/docs/tinymce/latest/spelling/
         // eslint-disable-next-line camelcase
         browser_spellcheck: true,
+
+        // Set the license_key to gpl.
+        // https://www.tiny.cloud/docs/tinymce/latest/license-key/
+        // eslint-disable-next-line camelcase
+        license_key: 'gpl',
+
+        // Disable the Alt+F12 shortcut.
+        // This was introduced in Tiny 7.1 to focus notifications, but it conflicts with the German keyboard layout
+        // which uses Alt+F12 to access the open curly brace.
+        // This is an upstream problem with TinyMCE and should be fixed in a future release.
+        // The recommended workaround is to disable the shortcut.
+        // See MDL-83257 for further information.
+        // eslint-disable-next-line camelcase
+        init_instance_callback: (editor) => {
+            editor.shortcuts.remove('alt+f12');
+        },
 
         setup: (editor) => {
             Options.register(editor, options);
@@ -397,8 +429,10 @@ const getEditorConfiguration = (target, tinyMCE, options, pluginValues) => {
             .replaceAll(/\| *\|/g, '|');
     }
 
-    // eslint-disable-next-line camelcase
-    instanceConfig.quickbars_selection_toolbar = instanceConfig.quickbars_selection_toolbar.replace('h2 h3', 'h3 h4 h5 h6');
+    if (instanceConfig.quickbars_selection_toolbar !== false) {
+        // eslint-disable-next-line camelcase
+        instanceConfig.quickbars_selection_toolbar = instanceConfig.quickbars_selection_toolbar.replace('h2 h3', 'h3 h4 h5 h6');
+    }
 
     // Next we call the `configure` function for any plugin which defines it.
     // We pass the current instanceConfig in here, to allow them to make certain changes to the global configuration.

@@ -27,7 +27,7 @@ use moodle_exception;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @covers \communication_matrix\matrix_user_manager
  */
-class matrix_user_manager_test extends \advanced_testcase {
+final class matrix_user_manager_test extends \advanced_testcase {
     /**
      * Test fetcihing a users matrix userid from Moodle.
      */
@@ -125,6 +125,11 @@ class matrix_user_manager_test extends \advanced_testcase {
                 'https://matrix.example.org:8448',
                 'colin.creavey',
                 '@colin.creavey:matrix.example.org',
+            ],
+            'numeric username' => [
+                'https://matrix.example.org',
+                '123456',
+                '@' . matrix_user_manager::MATRIX_USER_PREFIX . '123456:matrix.example.org',
             ],
         ];
     }
@@ -229,6 +234,6 @@ class matrix_user_manager_test extends \advanced_testcase {
         $this->assertNotFalse($matrixprofilefield);
 
         $user = $this->getDataGenerator()->create_user();
-        $this->assertObjectHasAttribute($matrixprofilefield, profile_user_record($user->id));
+        $this->assertObjectHasProperty($matrixprofilefield, profile_user_record($user->id));
     }
 }

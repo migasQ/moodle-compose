@@ -35,11 +35,11 @@ use core_course\local\repository\content_item_readonly_repository;
  * @copyright  2020 Jake Dallimore <jrhdallimore@gmail.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class content_item_readonly_repository_test extends \advanced_testcase {
+final class content_item_readonly_repository_test extends \advanced_testcase {
     /**
      * Test the repository method, find_all_for_course().
      */
-    public function test_find_all_for_course() {
+    public function test_find_all_for_course(): void {
         $this->resetAfterTest();
 
         $course = $this->getDataGenerator()->create_course();
@@ -57,7 +57,7 @@ class content_item_readonly_repository_test extends \advanced_testcase {
     /**
      * Test verifying that content items for hidden modules are not returned.
      */
-    public function test_find_all_for_course_hidden_module() {
+    public function test_find_all_for_course_hidden_module(): void {
         $this->resetAfterTest();
         global $DB;
 
@@ -76,7 +76,7 @@ class content_item_readonly_repository_test extends \advanced_testcase {
     /**
      * Test confirming that all content items can be fetched, even those which require certain caps when in a course.
      */
-    public function test_find_all() {
+    public function test_find_all(): void {
         $this->resetAfterTest();
 
         global $DB, $CFG;

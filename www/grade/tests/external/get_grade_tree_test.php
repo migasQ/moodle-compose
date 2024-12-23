@@ -32,12 +32,11 @@ require_once($CFG->dirroot . '/webservice/tests/helpers.php');
  * @copyright  2023 Mihail Geshoski <mihail@moodle.com>
  * @covers     \core_grades\external\get_grade_tree
  */
-class get_grade_tree_test extends \externallib_advanced_testcase {
+final class get_grade_tree_test extends \externallib_advanced_testcase {
 
     /**
      * Test the return value of the external function.
      *
-     * @covers ::execute
      * @return void
      */
     public function test_execute(): void {

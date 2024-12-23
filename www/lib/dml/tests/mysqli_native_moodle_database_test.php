@@ -30,7 +30,7 @@ use moodle_exception;
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @covers  \mysqli_native_moodle_database
  */
-class mysqli_native_moodle_database_test extends \advanced_testcase {
+final class mysqli_native_moodle_database_test extends \advanced_testcase {
 
     /**
      * Set up.
@@ -70,7 +70,6 @@ class mysqli_native_moodle_database_test extends \advanced_testcase {
 
         $reflector = new ReflectionClass($db2);
         $rp = $reflector->getProperty('mysqli');
-        $rp->setAccessible(true);
         return $rp->getValue($db2);
     }
 
@@ -123,7 +122,8 @@ class mysqli_native_moodle_database_test extends \advanced_testcase {
         } catch (moodle_exception $e) {
             // ... or fail.
             // Unfortunately we cannot be sure with the error string.
-            $this->markTestIncomplete('SSL not supported?');
+            $this->markTestSkipped('MySQL server does not support SSL. Unable to complete the test.');
+            return;
         }
 
         try {

@@ -26,7 +26,7 @@ use core_user;
  * @copyright  2024 onwards Laurent David <laurent.david@moodle.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later.
  */
-class table_log_test extends advanced_testcase {
+final class table_log_test extends advanced_testcase {
     /**
      * @var int The course with separate groups.
      */
@@ -224,6 +224,7 @@ class table_log_test extends advanced_testcase {
      */
     public function setUp(): void {
         global $DB;
+        parent::setUp();
         $this->resetAfterTest();
         $this->preventResetByRollback(); // This is to ensure that we can actually trigger event and record them in the log store.
         $this->courses[self::COURSE_SEPARATE_GROUP] = $this->getDataGenerator()->create_course(['groupmode' => SEPARATEGROUPS]);
@@ -303,7 +304,10 @@ class table_log_test extends advanced_testcase {
         $this->setUser($currentuser->id);
         $store->flush();
         $table->query_db(100);
-        $filteredevents = array_filter($table->rawdata, fn($event) => get_class($event) === \core\event\course_viewed::class);
+        $filteredevents =
+            array_filter(
+                $table->rawdata, fn($event) => get_class($event) === \core\event\course_viewed::class
+            );
         $usernames = array_map(
             function($event) {
                 $user = core_user::get_user($event->userid, '*', MUST_EXIST);

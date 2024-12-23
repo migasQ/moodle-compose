@@ -36,14 +36,14 @@ require_once($CFG->dirroot . '/webservice/tests/helpers.php');
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @coversDefaultClass \core\external\moodlenet_get_shared_course_info
  */
-class moodlenet_get_shared_course_info_test extends externallib_advanced_testcase {
+final class moodlenet_get_shared_course_info_test extends externallib_advanced_testcase {
 
     /**
      * Test the behaviour of moodlenet_get_shared_course_info().
      *
      * @covers ::execute
      */
-    public function test_moodlenet_get_shared_course_info() {
+    public function test_moodlenet_get_shared_course_info(): void {
         global $CFG;
         $this->resetAfterTest();
         $this->setAdminUser();

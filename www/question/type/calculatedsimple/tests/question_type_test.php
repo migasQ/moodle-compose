@@ -44,27 +44,29 @@ require_once($CFG->dirroot . '/question/type/calculatedsimple/edit_calculatedsim
  * @covers \qtype_calculatedsimple_edit_form
  *
  */
-class question_type_test extends \advanced_testcase {
+final class question_type_test extends \advanced_testcase {
     protected $qtype;
 
     protected function setUp(): void {
+        parent::setUp();
         $this->qtype = new qtype_calculatedsimple();
     }
 
     protected function tearDown(): void {
         $this->qtype = null;
+        parent::tearDown();
     }
 
-    public function test_name() {
+    public function test_name(): void {
         $this->assertEquals($this->qtype->name(), 'calculatedsimple');
     }
 
-    public function test_can_analyse_responses() {
+    public function test_can_analyse_responses(): void {
         $this->assertTrue($this->qtype->can_analyse_responses());
     }
 
 
-    public function test_question_saving_sumwithvariants() {
+    public function test_question_saving_sumwithvariants(): void {
         $this->resetAfterTest(true);
         $this->setAdminUser();
 

@@ -28,14 +28,14 @@ require_once($CFG->libdir.'/adminlib.php');
  * @copyright  2020 Brendan Heywood <brendan@catalyst-au.net>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class adminlib_test extends \advanced_testcase {
+final class adminlib_test extends \advanced_testcase {
 
     /**
      * Data provider of serialized string.
      *
      * @return array
      */
-    public function db_should_replace_dataprovider() {
+    public static function db_should_replace_dataprovider(): array {
         return [
             // Skipped tables.
             ['block_instances', '', false],
@@ -75,7 +75,7 @@ class adminlib_test extends \advanced_testcase {
      * @param string $column name
      * @param bool $expected whether it should be replaced
      */
-    public function test_db_should_replace(string $table, string $column, bool $expected) {
+    public function test_db_should_replace(string $table, string $column, bool $expected): void {
         $actual = db_should_replace($table, $column);
         $this->assertSame($actual, $expected);
     }
@@ -86,7 +86,7 @@ class adminlib_test extends \advanced_testcase {
      * @covers ::db_should_replace
      * @return array
      */
-    public function db_should_replace_additional_skip_tables_dataprovider() {
+    public static function db_should_replace_additional_skip_tables_dataprovider(): array {
         return [
             // Skipped tables.
             ['block_instances', '', false],
@@ -120,7 +120,7 @@ class adminlib_test extends \advanced_testcase {
      * @param string $column name
      * @param bool $expected whether it should be replaced
      */
-    public function test_db_should_replace_additional_skip_tables(string $table, string $column, bool $expected) {
+    public function test_db_should_replace_additional_skip_tables(string $table, string $column, bool $expected): void {
         $this->resetAfterTest();
         $additionalskiptables = 'context, quiz_attempts, role_assignments ';
         $actual = db_should_replace($table, $column, $additionalskiptables);
@@ -128,33 +128,34 @@ class adminlib_test extends \advanced_testcase {
     }
 
     /**
-     * Test method used by upgradesettings.php to make sure
-     * there are no missing settings in PHPUnit and Behat tests.
+     * Test admin_output_new_settings_by_page method.
      *
      * @covers ::admin_output_new_settings_by_page
      */
-    public function test_admin_output_new_settings_by_page() {
+    public function test_admin_output_new_settings_by_page(): void {
         $this->resetAfterTest();
         $this->setAdminUser();
+
+        $root = admin_get_root(true, true);
+        // The initial list of html pages with no default settings.
+        $initialsettings = admin_output_new_settings_by_page($root);
+        $this->assertArrayHasKey('supportcontact', $initialsettings);
+        $this->assertArrayHasKey('frontpagesettings', $initialsettings);
+        // Existing default setting.
+        $this->assertArrayNotHasKey('modsettingbook', $initialsettings);
 
         // Add settings not set during PHPUnit init.
         set_config('supportemail', 'support@example.com');
         $frontpage = new \admin_setting_special_frontpagedesc();
         $frontpage->write_setting('test test');
-
-        // NOTE: if this test fails then it is most likely extra setting in
-        // some additional plugin without default - developer needs to add
-        // a workaround into their db/install.php for PHPUnit and Behat.
-
-        $root = admin_get_root(true, true);
-        $new = admin_output_new_settings_by_page($root);
-        $this->assertSame([], $new);
-
+        // Remove a default setting.
         unset_config('numbering', 'book');
-        unset_config('supportemail');
+
         $root = admin_get_root(true, true);
         $new = admin_output_new_settings_by_page($root);
-        $this->assertCount(2, $new);
+        $this->assertArrayNotHasKey('supportcontact', $new);
+        $this->assertArrayNotHasKey('frontpagesettings', $new);
+        $this->assertArrayHasKey('modsettingbook', $new);
     }
 
     /**
@@ -162,7 +163,7 @@ class adminlib_test extends \advanced_testcase {
      *
      * @covers ::admin_apply_default_settings
      */
-    public function test_admin_apply_default_settings() {
+    public function test_admin_apply_default_settings(): void {
         global $DB;
 
         $this->resetAfterTest();

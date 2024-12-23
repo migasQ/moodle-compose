@@ -24,7 +24,7 @@ namespace factor_grace;
  * @copyright   Catalyst IT
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class factor_test extends \advanced_testcase {
+final class factor_test extends \advanced_testcase {
 
     /**
      * Test affecting factors
@@ -32,7 +32,7 @@ class factor_test extends \advanced_testcase {
      * @covers ::get_affecting_factors
      * @return void
      */
-    public function test_affecting_factors() {
+    public function test_affecting_factors(): void {
         $this->resetAfterTest(true);
         $user = $this->getDataGenerator()->create_user();
         $this->setUser($user);

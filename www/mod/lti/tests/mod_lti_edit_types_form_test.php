@@ -35,7 +35,7 @@ require_once(__DIR__ . '/course_categories_trait.php');
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @since      Moodle 4.3
  */
-class mod_lti_edit_types_form_test extends \advanced_testcase {
+final class mod_lti_edit_types_form_test extends \advanced_testcase {
     // There are shared helpers for these tests in the helper course_categories_trait.
     use \mod_lti_course_categories_trait;
 
@@ -44,7 +44,7 @@ class mod_lti_edit_types_form_test extends \advanced_testcase {
      *
      * @covers \mod_lti_edit_types_form::lti_build_category_tree
      */
-    public function test_set_nested_categories() {
+    public function test_set_nested_categories(): void {
         global $CFG, $DB;
 
         require_once($CFG->dirroot . '/mod/lti/tests/fixtures/test_edit_form.php');

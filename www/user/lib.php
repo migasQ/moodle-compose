@@ -22,6 +22,10 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+use core\di;
+use core\hook;
+use core_user\hook\extend_user_menu;
+
 define('USER_FILTER_ENROLMENT', 1);
 define('USER_FILTER_GROUP', 2);
 define('USER_FILTER_LAST_ACCESS', 3);
@@ -150,7 +154,7 @@ function user_create_user($user, $updatepassword = true, $triggerevent = true) {
  *             This will not affect user_password_updated event triggering.
  */
 function user_update_user($user, $updatepassword = true, $triggerevent = true) {
-    global $DB, $CFG;
+    global $DB;
 
     // Set the timecreate field to the current time.
     if (!is_object($user)) {
@@ -159,26 +163,12 @@ function user_update_user($user, $updatepassword = true, $triggerevent = true) {
 
     $currentrecord = $DB->get_record('user', ['id' => $user->id]);
 
-    // Communication api update for user.
-    if (core_communication\api::is_available()) {
-        $usercourses = enrol_get_users_courses($user->id);
-        if (!empty($currentrecord) && isset($user->suspended) && $currentrecord->suspended !== $user->suspended) {
-            foreach ($usercourses as $usercourse) {
-                $communication = \core_communication\api::load_by_instance(
-                    context: \core\context\course::instance($usercourse->id),
-                    component: 'core_course',
-                    instancetype: 'coursecommunication',
-                    instanceid: $usercourse->id
-                );
-                // If the record updated the suspended for a user.
-                if ($user->suspended === 0) {
-                    $communication->add_members_to_room([$user->id]);
-                } else if ($user->suspended === 1) {
-                    $communication->remove_members_from_room([$user->id]);
-                }
-            }
-        }
-    }
+    // Dispatch the hook for pre user update actions.
+    $hook = new \core_user\hook\before_user_updated(
+        user: $user,
+        currentuserdata: $currentrecord,
+    );
+    \core\di::get(\core\hook\manager::class)->dispatch($hook);
 
     // Check username.
     if (isset($user->username)) {
@@ -209,6 +199,13 @@ function user_update_user($user, $updatepassword = true, $triggerevent = true) {
         unset($user->calendartype);
     }
 
+    // Delete theme usage cache if the theme has been changed.
+    if (isset($user->theme)) {
+        if ($user->theme != $currentrecord->theme) {
+            theme_delete_used_in_context_cache($user->theme, $currentrecord->theme);
+        }
+    }
+
     // Validate user data object.
     $uservalidation = core_user::validate($user);
     if ($uservalidation !== true) {
@@ -224,7 +221,7 @@ function user_update_user($user, $updatepassword = true, $triggerevent = true) {
         if (!property_exists($currentrecord, $attributekey) || $attributekey === 'timemodified') {
             continue;
         }
-        if ($currentrecord->{$attributekey} != $attributevalue) {
+        if ($currentrecord->{$attributekey} !== $attributevalue) {
             $changedattributes[$attributekey] = $attributevalue;
         }
     }
@@ -293,7 +290,7 @@ function user_get_default_fields() {
         'institution', 'interests', 'firstaccess', 'lastaccess', 'auth', 'confirmed',
         'idnumber', 'lang', 'theme', 'timezone', 'mailformat', 'description', 'descriptionformat',
         'city', 'country', 'profileimageurlsmall', 'profileimageurl', 'customfields',
-        'groups', 'roles', 'preferences', 'enrolledcourses', 'suspended', 'lastcourseaccess'
+        'groups', 'roles', 'preferences', 'enrolledcourses', 'suspended', 'lastcourseaccess', 'trackforums',
     );
 }
 
@@ -401,7 +398,7 @@ function user_get_user_details($user, $course = null, array $userfields = array(
             foreach ($fields as $formfield) {
                 if ($formfield->show_field_content()) {
                     $userdetails['customfields'][] = [
-                        'name' => $formfield->field->name,
+                        'name' => $formfield->display_name(),
                         'value' => $formfield->data,
                         'displayvalue' => $formfield->display_data(),
                         'type' => $formfield->field->datatype,
@@ -437,9 +434,7 @@ function user_get_user_details($user, $course = null, array $userfields = array(
         $hiddenfields = array_flip(explode(',', $CFG->hiddenuserfields));
     }
 
-
-    if (!empty($user->address) && (in_array('address', $userfields)
-            && in_array('address', $showuseridentityfields) || $isadmin)) {
+    if (!empty($user->address) && (in_array('address', $userfields) || $isadmin)) {
         $userdetails['address'] = $user->address;
     }
     if (!empty($user->phone1) && (in_array('phone1', $userfields)
@@ -567,10 +562,13 @@ function user_get_user_details($user, $course = null, array $userfields = array(
                     }
                 }
 
+                $groupdescription = file_rewrite_pluginfile_urls($group->description, 'pluginfile.php', $context->id, 'group',
+                    'description', $group->id);
+
                 $userdetails['groups'][] = [
                     'id' => $group->id,
-                    'name' => format_string($group->name),
-                    'description' => format_text($group->description, $group->descriptionformat, ['context' => $context]),
+                    'name' => format_string($group->name, true, ['context' => $context]),
+                    'description' => format_text($groupdescription, $group->descriptionformat, ['context' => $context]),
                     'descriptionformat' => $group->descriptionformat
                 ];
             }
@@ -605,7 +603,7 @@ function user_get_user_details($user, $course = null, array $userfields = array(
     }
 
     if ($currentuser or has_capability('moodle/user:viewalldetails', $context)) {
-        $extrafields = ['auth', 'confirmed', 'lang', 'theme', 'mailformat'];
+        $extrafields = ['auth', 'confirmed', 'lang', 'theme', 'mailformat', 'trackforums'];
         foreach ($extrafields as $extrafield) {
             if (in_array($extrafield, $userfields) && isset($user->$extrafield)) {
                 $userdetails[$extrafield] = $user->$extrafield;
@@ -897,7 +895,7 @@ function user_get_user_navigation_info($user, $page, $options = array()) {
 
                 // Get login failures string.
                 $a = new stdClass();
-                $a->attempts = html_writer::tag('span', $count, array('class' => 'value mr-1 font-weight-bold'));
+                $a->attempts = html_writer::tag('span', $count, array('class' => 'value me-1 font-weight-bold'));
                 $returnobject->metadata['userloginfail'] =
                     get_string('failedloginattempts', '', $a);
 
@@ -916,6 +914,14 @@ function user_get_user_navigation_info($user, $page, $options = array()) {
         if ($item->itemtype !== 'divider' && $item->itemtype !== 'invalid') {
             $custommenucount++;
         }
+    }
+
+    // Call to hook to add menu items.
+    $hook = new extend_user_menu();
+    di::get(core\hook\manager::class)->dispatch($hook);
+    $hookitems = $hook->get_navitems();
+    foreach ($hookitems as $menuitem) {
+        $returnobject->navitems[] = $menuitem;
     }
 
     if ($custommenucount > 0) {
@@ -1289,14 +1295,23 @@ function user_get_tagged_users($tag, $exclusivemode = false, $fromctx = 0, $ctx 
     }
     $perpage = $exclusivemode ? 24 : 5;
     $content = '';
-    $totalpages = ceil($usercount / $perpage);
+    $excludedusers = 0;
 
     if ($usercount) {
         $userlist = $tag->get_tagged_items('core', 'user', $page * $perpage, $perpage,
                 'it.deleted=:notdeleted', array('notdeleted' => 0));
+        foreach ($userlist as $user) {
+            if (!user_can_view_profile($user)) {
+                unset($userlist[$user->id]);
+                $excludedusers++;
+            }
+        }
         $renderer = $PAGE->get_renderer('core', 'user');
         $content .= $renderer->user_list($userlist, $exclusivemode);
     }
+
+    // Calculate the total number of pages.
+    $totalpages = ceil(($usercount - $excludedusers) / $perpage);
 
     return new core_tag\output\tagindex($tag, 'core', 'user', $content,
             $exclusivemode, $fromctx, $ctx, $rec, $page, $totalpages);

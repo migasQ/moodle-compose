@@ -33,14 +33,14 @@ use core_external\external_api;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @coversDefaultClass \core_contentbank\external\copy_content
  */
-class copy_content_test extends \externallib_advanced_testcase {
+final class copy_content_test extends \externallib_advanced_testcase {
 
     /**
      * Test the behaviour of copy_content() for users with permission.
      *
      * @covers ::execute
      */
-    public function test_copy_content_with_permission() {
+    public function test_copy_content_with_permission(): void {
         global $CFG, $DB;
         $this->resetAfterTest();
 
@@ -84,7 +84,7 @@ class copy_content_test extends \externallib_advanced_testcase {
      *
      * @covers ::execute
      */
-    public function test_copy_content() {
+    public function test_copy_content(): void {
         global $CFG, $DB;
         $this->resetAfterTest();
 

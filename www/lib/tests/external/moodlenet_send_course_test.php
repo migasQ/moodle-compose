@@ -36,14 +36,14 @@ require_once($CFG->dirroot . '/webservice/tests/helpers.php');
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @coversDefaultClass \core\external\moodlenet_send_course
  */
-class moodlenet_send_course_test extends externallib_advanced_testcase {
+final class moodlenet_send_course_test extends externallib_advanced_testcase {
 
     /**
      * Test the behaviour of moodlenet_send_course().
      *
      * @covers ::execute
      */
-    public function test_moodlenet_send_course() {
+    public function test_moodlenet_send_course(): void {
         global $CFG;
         $this->resetAfterTest();
         $this->setAdminUser();
@@ -124,7 +124,7 @@ class moodlenet_send_course_test extends externallib_advanced_testcase {
      * @dataProvider return_resource_url_provider
      * @covers ::execute_returns
      */
-    public function test_moodlenet_send_course_return_resource_url(bool $state, string $resourceurl) {
+    public function test_moodlenet_send_course_return_resource_url(bool $state, string $resourceurl): void {
         $this->resetAfterTest();
         // Create dummy result with the resourceurl.
         $result = [
@@ -146,7 +146,7 @@ class moodlenet_send_course_test extends externallib_advanced_testcase {
      *
      * @return array Test data.
      */
-    public function return_resource_url_provider(): array {
+    public static function return_resource_url_provider(): array {
         return [
             'Success 1' => [
                 true,

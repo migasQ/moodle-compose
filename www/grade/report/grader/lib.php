@@ -102,8 +102,19 @@ class grade_report_grader extends grade_report {
      */
     public $canviewhidden;
 
-    /** @var int Maximum number of students that can be shown on one page */
+    /**
+     * @var int Maximum number of students that can be shown on one page
+     * @deprecated Since Moodle 4.5 MDL-84245. Use grade_report_grader::get_max_students_per_page() instead.
+     */
+    #[\core\attribute\deprecated('grade_report_grader::get_max_students_per_page()', since: '4.5', mdl: 'MDL-84245')]
     public const MAX_STUDENTS_PER_PAGE = 5000;
+
+    /**
+     * @var int The maximum number of grades that can be shown on one page.
+     *
+     * More than this causes issues for the browser due to the size of the page.
+     */
+    public const MAX_GRADES_PER_PAGE = 200000;
 
     /** @var int[] List of available options on the pagination dropdown */
     public const PAGINATION_OPTIONS = [20, 100];
@@ -466,9 +477,10 @@ class grade_report_grader extends grade_report {
                    $this->userwheresql
                    $this->groupwheresql
               ORDER BY $sort";
-        // We never work with unlimited result. Limit the number of records by MAX_STUDENTS_PER_PAGE if no other limit is specified.
+        // We never work with unlimited result. Limit the number of records by $this->get_max_students_per_page() if no other limit
+        // is specified.
         $studentsperpage = ($this->get_students_per_page() && !$allusers) ?
-            $this->get_students_per_page() : static::MAX_STUDENTS_PER_PAGE;
+            $this->get_students_per_page() : $this->get_max_students_per_page();
         $this->users = $DB->get_records_sql($sql, $params, $studentsperpage * $this->page, $studentsperpage);
 
         if (empty($this->users)) {
@@ -524,6 +536,18 @@ class grade_report_grader extends grade_report {
         });
 
         return $this->allgradeitems;
+    }
+
+    /**
+     * Return the maximum number of students we can display per page.
+     *
+     * This is based on the number of grade items on the course, to limit the overall number of grades displayed on a single page.
+     * Trying to display too many grades causes browser issues.
+     *
+     * @return int
+     */
+    public function get_max_students_per_page(): int {
+        return round(static::MAX_GRADES_PER_PAGE / count($this->get_allgradeitems()));
     }
 
     /**
@@ -659,7 +683,7 @@ class grade_report_grader extends grade_report {
         // The browser's scrollbar may partly cover (in certain operative systems) the content in the student header
         // when horizontally scrolling through the table contents (most noticeable when in RTL mode).
         // Therefore, add slight padding on the left or right when using RTL mode.
-        $studentheader->attributes['class'] = "header pl-3";
+        $studentheader->attributes['class'] = "header ps-3";
         $studentheader->scope = 'col';
         $studentheader->header = true;
         $studentheader->id = 'studentheader';
@@ -734,7 +758,7 @@ class grade_report_grader extends grade_report {
             // The browser's scrollbar may partly cover (in certain operative systems) the content in the user cells
             // when horizontally scrolling through the table contents (most noticeable when in RTL mode).
             // Therefore, add slight padding on the left or right when using RTL mode.
-            $usercell->attributes['class'] .= ' pl-3';
+            $usercell->attributes['class'] .= ' ps-3';
             $usercell->text .= $this->gtree->get_cell_action_menu(['userid' => $userid], 'user', $this->gpr);
 
             $userrow->cells[] = $usercell;
@@ -775,7 +799,7 @@ class grade_report_grader extends grade_report {
      * @param boolean $displayaverages whether to display average rows in the table
      * @return array Array of html_table_row objects
      */
-    public function get_right_rows(bool $displayaverages) : array {
+    public function get_right_rows(bool $displayaverages): array {
         global $CFG, $USER, $OUTPUT, $DB, $PAGE;
 
         $rows = [];
@@ -889,8 +913,8 @@ class grade_report_grader extends grade_report {
                     if (!$element['object']->is_aggregate_item()) {
                         $collapsedicon = $OUTPUT->render_from_template('gradereport_grader/collapse/icon', $collapsecontext);
                     }
-                    $headerlink = $this->gtree->get_element_header($element, true,
-                        true, false, false, true, $sortlink);
+                    $headerlink = grade_helper::get_element_header($element, true,
+                        true, false, false, true);
 
                     $itemcell = new html_table_cell();
                     $itemcell->attributes['class'] = $type . ' ' . $catlevel .
@@ -1197,12 +1221,64 @@ class grade_report_grader extends grade_report {
         }
 
         $rows = $this->get_right_range_row($rows);
-        if ($displayaverages) {
-            $rows = $this->get_right_avg_row($rows, true);
-            $rows = $this->get_right_avg_row($rows);
+        if ($displayaverages && $this->canviewhidden) {
+            $showonlyactiveenrol = $this->show_only_active();
+
+            if ($this->currentgroup) {
+                $ungradedcounts = $this->ungraded_counts(true, true, $showonlyactiveenrol);
+                $rows[] = $this->format_averages($ungradedcounts);
+            }
+
+            $ungradedcounts = $this->ungraded_counts(false, true, $showonlyactiveenrol);
+            $rows[] = $this->format_averages($ungradedcounts);
         }
 
         return $rows;
+    }
+
+    /**
+     * Returns a row of grade items averages
+     *
+     * @param grade_item $gradeitem Grade item.
+     * @param array|null $aggr Average value and meancount information.
+     * @param bool|null $shownumberofgrades Whether to show number of grades.
+     * @return html_table_cell Formatted average cell.
+     */
+    protected function format_average_cell(grade_item $gradeitem, ?array $aggr = null, ?bool $shownumberofgrades = null): html_table_cell {
+        global $OUTPUT;
+
+        if ($gradeitem->needsupdate) {
+            $avgcell = new html_table_cell();
+            $avgcell->attributes['class'] = 'i' . $gradeitem->id;
+            $avgcell->text = $OUTPUT->container(get_string('error'), 'gradingerror');
+        } else {
+            $gradetypeclass = '';
+            if ($gradeitem->gradetype == GRADE_TYPE_SCALE) {
+                $gradetypeclass = ' grade_type_scale';
+            } else if ($gradeitem->gradetype == GRADE_TYPE_VALUE) {
+                $gradetypeclass = ' grade_type_value';
+            } else if ($gradeitem->gradetype == GRADE_TYPE_TEXT) {
+                $gradetypeclass = ' grade_type_text';
+            }
+
+            if (empty($aggr['average'])) {
+                $avgcell = new html_table_cell();
+                $avgcell->attributes['class'] = $gradetypeclass . ' i' . $gradeitem->id;
+                $avgcell->attributes['data-itemid'] = $gradeitem->id;
+                $avgcell->text = html_writer::div('-', '', ['data-collapse' => 'avgrowcell']);
+            } else {
+                $numberofgrades = '';
+                if ($shownumberofgrades) {
+                    $numberofgrades = " (" . $aggr['meancount'] . ")";
+                }
+
+                $avgcell = new html_table_cell();
+                $avgcell->attributes['class'] = $gradetypeclass . ' i' . $gradeitem->id;
+                $avgcell->attributes['data-itemid'] = $gradeitem->id;
+                $avgcell->text = html_writer::div($aggr['average'] . $numberofgrades, '', ['data-collapse' => 'avgrowcell']);
+            }
+        }
+        return $avgcell;
     }
 
     /**
@@ -1231,6 +1307,8 @@ class grade_report_grader extends grade_report {
         foreach ($leftrows as $key => $row) {
             $row->cells = array_merge($row->cells, $rightrows[$key]->cells);
             $fulltable->data[] = $row;
+            unset($leftrows[$key]);
+            unset($rightrows[$key]);
         }
         $html .= html_writer::table($fulltable);
         return $OUTPUT->container($html, 'gradeparent');
@@ -1411,6 +1489,7 @@ class grade_report_grader extends grade_report {
     }
 
     /**
+     * @deprecated since Moodle 4.4 - Call calculate_average instead.
      * Builds and return the row of averages for the right part of the grader report.
      * @param array $rows Whether to return only group averages or all averages.
      * @param bool $grouponly Whether to return only group averages or all averages.
@@ -1418,6 +1497,10 @@ class grade_report_grader extends grade_report {
      */
     public function get_right_avg_row($rows=array(), $grouponly=false) {
         global $USER, $DB, $OUTPUT, $CFG;
+
+        debugging('grader_report_grader::get_right_avg_row() is deprecated.
+            Call grade_report::calculate_average() instead.', DEBUG_DEVELOPER);
+
         if (!$this->canviewhidden) {
             // Totals might be affected by hiding, if user can not see hidden grades the aggregations might be altered
             // better not show them at all if user can not see all hidden grades.
@@ -1901,9 +1984,7 @@ class grade_report_grader extends grade_report {
         $requirednames = order_in_string(\core_user\fields::get_name_fields(), $nameformat);
         if (!empty($requirednames)) {
             foreach ($requirednames as $name) {
-                $arrows['studentname'] .= html_writer::link(
-                    new moodle_url($this->baseurl, array('sortitemid' => $name)), get_string($name)
-                );
+                $arrows['studentname'] .= get_string($name);
                 if ($this->sortitemid == $name) {
                     $sortlink->param('sortitemid', $name);
                     if ($this->sortorder == 'ASC') {
@@ -1927,10 +2008,8 @@ class grade_report_grader extends grade_report {
             if (preg_match(\core_user\fields::PROFILE_FIELD_REGEX, $field)) {
                 $attributes['data-collapse-name'] = \core_user\fields::get_display_name($field);
             }
-            $fieldlink = html_writer::link(new moodle_url($this->baseurl, ['sortitemid' => $field]),
-                \core_user\fields::get_display_name($field), $attributes);
-            $arrows[$field] = $fieldlink;
 
+            $arrows[$field] = html_writer::span(\core_user\fields::get_display_name($field), '', $attributes);
             if ($field == $this->sortitemid) {
                 $sortlink->param('sortitemid', $field);
 

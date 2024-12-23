@@ -26,7 +26,7 @@ use advanced_testcase;
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @covers  \core\encryption
  */
-class encryption_test extends advanced_testcase {
+final class encryption_test extends advanced_testcase {
 
     /**
      * Clear junk created by tests.
@@ -43,9 +43,11 @@ class encryption_test extends advanced_testcase {
         }
         remove_dir($CFG->dataroot . '/secret');
         unset($CFG->nokeygeneration);
+        parent::tearDown();
     }
 
     protected function setUp(): void {
+        parent::setUp();
         $this->tearDown();
 
         require_once(__DIR__ . '/fixtures/testable_encryption.php');
@@ -56,7 +58,7 @@ class encryption_test extends advanced_testcase {
      *
      * @return array[] Array of method options for test
      */
-    public function encryption_method_provider(): array {
+    public static function encryption_method_provider(): array {
         return [
             'Sodium' => [encryption::METHOD_SODIUM],
         ];

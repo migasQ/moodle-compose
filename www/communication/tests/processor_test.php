@@ -32,7 +32,7 @@ require_once(__DIR__ . '/communication_test_helper_trait.php');
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @coversDefaultClass \core_communication\processor
  */
-class processor_test extends \advanced_testcase {
+final class processor_test extends \advanced_testcase {
     use matrix_test_helper_trait;
     use communication_test_helper_trait;
 
@@ -48,7 +48,9 @@ class processor_test extends \advanced_testcase {
      *
      * @covers ::create_instance
      * @covers ::get_id
-     * @covers ::get_instance
+     * @covers ::get_context
+     * @covers ::get_context_id
+     * @covers ::get_provider
      * @covers ::get_room_name
      */
     public function test_create_instance(): void {

@@ -460,7 +460,7 @@ function lti_get_jwt_claim_mapping() {
  * @return object|null
  * @since  Moodle 3.9
  */
-function lti_get_instance_type(object $instance) : ?object {
+function lti_get_instance_type(object $instance): ?object {
     if (empty($instance->typeid)) {
         if (!$tool = lti_get_tool_by_url_match($instance->toolurl, $instance->course)) {
             $tool = lti_get_tool_by_url_match($instance->securetoolurl,  $instance->course);
@@ -1323,7 +1323,6 @@ function lti_verify_with_keyset($jwtparam, $keyseturl, $clientid) {
             throw new moodle_exception('errornocachedkeysetfound', 'mod_lti');
         }
         $keysetarr = json_decode($keyset, true);
-        // JWK::parseKeySet uses RS256 algorithm by default.
         $keys = JWK::parseKeySet($keysetarr);
         $jwt = JWT::decode($jwtparam, $keys);
     } catch (Exception $e) {
@@ -1332,7 +1331,10 @@ function lti_verify_with_keyset($jwtparam, $keyseturl, $clientid) {
         $keysetarr = json_decode($keyset, true);
 
         // Fix for firebase/php-jwt's dependency on the optional 'alg' property in the JWK.
+        // The fix_jwks_alg() call only fixes a single, matched key and will leave others present (which may be missing alg too),
+        // Remaining keys missing alg are excluded since they cannot be used for decoding anyway (no match to JWT kid).
         $keysetarr = jwks_helper::fix_jwks_alg($keysetarr, $jwtparam);
+        $keysetarr['keys'] = array_filter($keysetarr['keys'], fn($key) => isset($key['alg']));
 
         // JWK::parseKeySet uses RS256 algorithm by default.
         $keys = JWK::parseKeySet($keysetarr);
@@ -1422,7 +1424,7 @@ function params_to_string(object $params) {
  *
  * @return stdClass Form config for the item
  */
-function content_item_to_form(object $tool, object $typeconfig, object $item) : stdClass {
+function content_item_to_form(object $tool, object $typeconfig, object $item): stdClass {
     global $OUTPUT;
 
     $config = new stdClass();
@@ -1516,8 +1518,7 @@ function content_item_to_form(object $tool, object $typeconfig, object $item) : 
         $config->instructorcustomparameters = params_to_string($item->custom);
     }
 
-    // Set the status, allowing the form to validate, and pass an indicator to the relevant form field.
-    $config->selectcontentstatus = true;
+    // Pass an indicator to the relevant form field.
     $config->selectcontentindicator = $OUTPUT->pix_icon('i/valid', get_string('yes')) . get_string('contentselected', 'mod_lti');
 
     return $config;
@@ -2379,8 +2380,16 @@ function lti_get_configured_types($courseid, $sectionreturn = 0) {
         }
         $type->icon = html_writer::empty_tag('img', ['src' => $iconurl, 'alt' => '', 'class' => "icon $iconclass"]);
 
-        $type->link = new moodle_url('/course/modedit.php', array('add' => 'lti', 'return' => 0, 'course' => $courseid,
-            'sr' => $sectionreturn, 'typeid' => $ltitype->id));
+        $params = [
+            'add' => 'lti',
+            'return' => 0,
+            'course' => $courseid,
+            'typeid' => $ltitype->id,
+        ];
+        if (!is_null($sectionreturn)) {
+            $params['sr'] = $sectionreturn;
+        }
+        $type->link = new moodle_url('/course/modedit.php', $params);
         $types[] = $type;
     }
     return $types;
@@ -2872,7 +2881,7 @@ function lti_update_type($type, $config) {
  * @param string $lticoursecategories Comma separated list of course categories.
  * @return void
  */
-function lti_type_add_categories(int $typeid, string $lticoursecategories = '') : void {
+function lti_type_add_categories(int $typeid, string $lticoursecategories = ''): void {
     global $DB;
     $coursecategories = explode(',', $lticoursecategories);
     foreach ($coursecategories as $coursecategory) {

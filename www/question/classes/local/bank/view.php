@@ -28,6 +28,7 @@ defined('MOODLE_INTERNAL') || die();
 
 require_once($CFG->dirroot . '/question/editlib.php');
 
+use coding_exception;
 use core\plugininfo\qbank;
 use core\output\datafilter;
 use core_plugin_manager;
@@ -374,8 +375,22 @@ class view {
             $menuactions = $plugin->get_question_actions($this);
             foreach ($menuactions as $menuaction) {
                 $this->questionactions[$menuaction::class] = $menuaction;
+                if ($menuaction->get_menu_position() === question_action_base::MENU_POSITION_NOT_SET) {
+                    debugging('Question bank actions must define the get_menu_position method. ' .
+                        $menuaction::class . ' does not.', DEBUG_DEVELOPER);
+                }
             }
         }
+
+        // Sort according to each action's desired position.
+        // Note, we are relying on the sort to be stable for
+        // equal values of get_menu_position.
+        uasort(
+            $this->questionactions,
+            function (question_action_base $a, question_action_base $b) {
+                return $a->get_menu_position() <=> $b->get_menu_position();
+            },
+        );
     }
 
     /**
@@ -785,10 +800,13 @@ class view {
         global $DB;
         $questions = $DB->get_recordset_sql($this->loadsql, $this->sqlparams,
             (int)$this->pagevars['qpage'] * (int)$this->pagevars['qperpage'], $this->pagevars['qperpage']);
-        if (empty($questions)) {
+        if (!$questions->valid()) {
             $questions->close();
-            // No questions on this page. Reset to page 0.
-            $questions = $DB->get_recordset_sql($this->loadsql, $this->sqlparams, 0, $this->pagevars['qperpage']);
+            // No questions on this page. Reset to the nearest page that contains questions.
+            $this->pagevars['qpage'] = max(0,
+                ceil($this->totalcount / $this->pagevars['qperpage']) - 1);
+            $questions = $DB->get_recordset_sql($this->loadsql, $this->sqlparams,
+                $this->pagevars['qpage'] * (int) $this->pagevars['qperpage'], $this->pagevars['qperpage']);
         }
         return $questions;
     }
@@ -850,21 +868,10 @@ class view {
     }
 
     /**
-     * Get the URL to preview a question.
-     * @param \stdClass $questiondata the data defining the question.
-     * @return \moodle_url the URL.
      * @deprecated since Moodle 4.0
-     * @see \qbank_previewquestion\helper::question_preview_url()
-     * @todo Final deprecation on Moodle 4.4 MDL-72438
      */
-    public function preview_question_url($questiondata) {
-        debugging(
-            'Function preview_question_url() has been deprecated and moved to qbank_previewquestion plugin, ' .
-                'please use qbank_previewquestion\helper::question_preview_url() instead.',
-            DEBUG_DEVELOPER
-        );
-        return question_preview_url($questiondata->id, null, null, null, null,
-            $this->get_most_specific_context());
+    public function preview_question_url() {
+        throw new coding_exception(__FUNCTION__ . '() has been removed.');
     }
 
     /**
@@ -1138,6 +1145,16 @@ class view {
 
         [$categoryid, $contextid] = category_condition::validate_category_param($this->pagevars['cat']);
         $catcontext = \context::instance_by_id($contextid);
+        // Update the question in the list with correct category context when we have selected category filter.
+        if (isset($this->pagevars['filter']['category']['values'])) {
+            $categoryid = $this->pagevars['filter']['category']['values'][0];
+            foreach ($this->contexts->all() as $context) {
+                if ((int) $context->instanceid === (int) $categoryid) {
+                    $catcontext = $context;
+                    break;
+                }
+            }
+        }
 
         echo \html_writer::start_tag(
             'div',
@@ -1151,8 +1168,8 @@ class view {
         echo $this->get_plugin_controls($catcontext, $categoryid);
 
         $this->build_query();
-        $questionsrs = $this->load_page_questions();
         $totalquestions = $this->get_question_count();
+        $questionsrs = $this->load_page_questions();
         $questions = [];
         foreach ($questionsrs as $question) {
             if (!empty($question->id)) {
@@ -1362,6 +1379,9 @@ class view {
         }
         // Pagination.
         $pageingurl = new \moodle_url($this->base_url());
+        // TODO MDL-82312: it really should not be necessary to set filter here, and not like this.
+        // This should be handled in baseurl, but it isn't so we do this so Moodle basically works for now.
+        $pageingurl->param('filter', json_encode($this->pagevars['filter']));
         $pagingbar = new \paging_bar($this->totalcount, $page, $perpage, $pageingurl);
         $pagingbar->pagevar = 'qpage';
         echo $OUTPUT->render($pagingbar);
@@ -1510,29 +1530,17 @@ class view {
     }
 
     /**
-     * Process actions for the selected action.
      * @deprecated since Moodle 4.0
-     * @todo Final deprecation on Moodle 4.4 MDL-72438
      */
     public function process_actions(): void {
-        debugging('Function process_actions() is deprecated and its code has been completely deleted.
-         Please, remove the call from your code and check core_question\local\bank\bulk_action_base
-          to learn more about bulk actions in qbank.', DEBUG_DEVELOPER);
-        // Associated code is deleted to make sure any incorrect call doesnt not cause any data loss.
+        throw new coding_exception(__FUNCTION__ . '() has been removed.');
     }
 
     /**
-     * Process actions with ui.
-     * @return bool
      * @deprecated since Moodle 4.0
-     * @todo Final deprecation on Moodle 4.4 MDL-72438
      */
-    public function process_actions_needing_ui(): bool {
-        debugging('Function process_actions_needing_ui() is deprecated and its code has been completely deleted.
-         Please, remove the call from your code and check core_question\local\bank\bulk_action_base
-          to learn more about bulk actions in qbank.', DEBUG_DEVELOPER);
-        // Associated code is deleted to make sure any incorrect call doesnt not cause any data loss.
-        return false;
+    public function process_actions_needing_ui() {
+        throw new coding_exception(__FUNCTION__ . '() has been removed.');
     }
 
     /**
