@@ -10,10 +10,11 @@
 
 ## Update
 
+- Upgrade/ config everything/ update plugins via git beforehand
+  - folders can be found from plugin overview page in moodle (e.g. `www/mod`, `www/course/format`, ...)
+- Set `$CFG->upgradekey = 'put_some_shared_secret_here';`
+- Activate maintenance mode
+- `git pull`
 - `docker compose pull && docker compose build --build-arg UID=$(id -u) --build-arg GID=$(id -g) --no-cache`
 - `docker compose up -d`
-- Activate maintenance mode
-- `git pull` 
-- Set `$CFG->upgradekey = 'put_some_shared_secret_here';`
-- Upgrade/ config everything/ update plugins
 - Deactivate maintenance mode

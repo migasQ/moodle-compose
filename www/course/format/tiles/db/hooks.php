@@ -15,18 +15,24 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Version details
+ * Hook callbacks for format tiles.
  *
- * @package     format_tiles
- * @copyright   2016 onwards David Watson {@link http://evolutioncode.uk}
- * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @package   format_tiles
+ * @copyright 2024 David Watson {@link http://evolutioncode.uk}
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version = 2024121252;        // The current plugin version (Date: YYYYMMDDXX).
-$plugin->requires = 2024100100;    // Moodle 4.5.
-$plugin->component = 'format_tiles';  // Full name of the plugin (used for diagnostics).
-$plugin->maturity = MATURITY_STABLE;
-$plugin->release = "4.5.0.6";
-$plugin->supported = [405, 405]; // Supported Moodle version range.
+$callbacks = [
+    [
+        'hook' => \core\hook\output\before_standard_head_html_generation::class,
+        'callback' => 'format_tiles\hooks\output\standard_head_html_prepend::callback',
+        'priority' => 0,
+    ],
+    [
+        'hook' => \core\hook\output\before_footer_html_generation::class,
+        'callback' => 'format_tiles\hooks\output\before_footer_html_generation::callback',
+        'priority' => 0,
+    ],
+];
